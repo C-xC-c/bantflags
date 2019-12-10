@@ -18,9 +18,6 @@ namespace BantFlags
             Host.CreateDefaultBuilder(args)
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
-                    // TODO: set this up properly for use on Debian.
-                    webBuilder.ConfigureLogging(logBuilder =>
-                    logBuilder.AddFile(@"/var/log/bantflags.log", minimumLevel: LogLevel.Information));
                     webBuilder.UseStartup<Startup>();
                 })
                 .ConfigureAppConfiguration((host, config) =>
