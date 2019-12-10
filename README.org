@@ -1,0 +1,74 @@
+* BantFlags
+A user script and backend enabling user created flags on [[https://boards.4chan.org/bant][/bant/]],
+originally based on [[https://github.com/flaghunters/Extra-Flags-for-4chan][extraflags]].
+
+ [[https://flags.plum.moe/bantflags.user.js][Install bantflags]]
+
+** Running
+*** Prerequisites
+- .NET core 3.1
+- Mariadb / mysql
+
+*** .NET dependancies
+- Nito.AsyncEX
+- Newtonsoft.Json
+- MySql.Data
+- Microsoft.AspNetCore.Mvc.NewtonsoftJson
+- Microsoft.AspNetCore.StaticFiles
+- Microsoft.EntityFrameworkCore.SqlServer
+- Microsoft.EntityFrameworkCore.Tools
+
+*** Setup
+1. Install .NET
+2. Clone and build the BantFlags .NET project.
+3. Create the database using =database.sql=.
+  + *Change the password*.
+4. configure =BantFlags/appsettings.example.json= with your connection
+   string and webroot (the directory you wish to serve the flags from)
+   and rename it to =appsettings.json=
+  + The location of the BantFlags application and the served content
+    are not necessarly the same. If you leave it empty, or provide a
+    nonexistant path the application will look for the =wwwroot=
+    folder inside the working directory.
+  + This should be placed either in inside the working directory or
+    the same directory as the program.
+5. Add flags to the backend (currently only possible by querying the
+   database directly), and place image *with the same name* in
+   ={webroot}/flags/=.
+6. Configure your webserver of choice to forward requests to kestral
+  + Example nginx config.
+7. Run the application
+8. ???
+9. profit.
+
+Such a setup /should/ map 1:1 to the userscript just by changing the
+variable =back_end= though I can't say I've ever tried it.
+
+*** Database
+Tables look like this:
+*posts*
+| id | post_nr | board |
+|  1 |   12345 | bant  |
+|  2 |   56789 | bant  |
+*flags*
+| id | flag      |
+|  1 | patchouli |
+|  2 | chen      |
+*postflags*
+| id | post_nr | flag |
+|  1 |       1 |    1 |
+|  2 |       1 |    2 |
+|  2 |       2 |    2 |
+
+where post_nr and flag in *postflags* are the primary key in their respective tables.
+
+*** API
+The backend exposes three endpoints used by the userscript to get and
+post flags, and a flags directory storing the images themselves.
+
+| route      | purpse                    |
+|------------+---------------------------|
+| /api/get   | Get flags in a thread     |
+| /api/post  | Add flags to the database |
+| /api/flags | List the flags we support |
+| /flags/*   | The flag images           |
