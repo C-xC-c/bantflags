@@ -39,7 +39,7 @@ declarations. Update your hecking browser.
 *** Setup
 1. Install .NET
 2. Clone and build the BantFlags solution.
-3. Create the database using =database.sql=.
+3. Create the database using [[https://github.com/C-xC-c/BantFlags/tree/master/environment/database.sql][database.sql]].
   + *Change the password*.
 4. configure =BantFlags/appsettings.example.json= with your connection
    string and webroot (the working directory / where you'll serve the
