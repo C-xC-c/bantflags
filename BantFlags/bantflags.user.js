@@ -10,7 +10,7 @@
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     0.8.0
+// @version     0.7.2
 // @grant       GM_xmlhttpRequest
 // @grant       GM_getValue
 // @grant       GM_setValue
@@ -47,6 +47,11 @@ var postNrs = []; // all post numbers in the thread.
 //
 // DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE CONFIGURATION BOXES
 //
+
+function ToggleFlagButton() {
+    let flagButton = document.getElementById("append_flag_button").disabled;
+    flagButton = flagButton === true ? false : true;
+}
 
 let elementsInClass = x => document.getElementsByClassName(x);
 let sliceCall = x => Array.prototype.slice.call(x);
@@ -110,7 +115,7 @@ var nsetup = { // not anymore a clone of the original setup
         MakeRequest(
             "GET",
             back_end + api_flags,
-            "", // Because we're GETting.
+            "version=" + encodeURIComponent(version),
             function (resp) {
                 debug('Loading flags');
                 if (resp.status !== 200) {

@@ -7,13 +7,13 @@ namespace BantFlags.Data.Database
 {
     public partial class DatabaseService
     {
+        // Maybe this could be better but I don't know SQL lol
         private readonly string GetPostsQuery = @"SELECT posts.post_nr, flags.flag FROM flags LEFT JOIN (postflags) ON (postflags.flag = flags.id) LEFT JOIN (posts) ON (postflags.post_nr = posts.id) WHERE FIND_IN_SET(posts.post_nr, (@posts))";
 
         /// <summary>
         /// Returns the post numbers and their flags from the post numbers in the input.
         /// </summary>
         /// <param name="input">List of post numbers on the page.</param>
-        /// <returns></returns>
         public async Task<IEnumerable<IGrouping<int, DataRow>>> GetPosts(string input)
         {
             using var rentedConnection = await ConnectionPool.RentConnectionAsync();

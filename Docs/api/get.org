@@ -1,0 +1,57 @@
+* /api/get
+
+** Database Query
+Returns an =IEnumerable<IGrouping<int, DataRow>>= of post numbers and
+their flags where the post numbers are contained in the input.
+
+** Compatibility
+*** V1
+Minimum script version: 0
+
+Flags are converted from an =IEnumerable<IGrouping<int, DataRow>>= to
+a =List<Dictionary<string, string>>= by joining the values in the
+=DataRow= by "||", which are then split and converted into an array by
+the script.
+
+We're doing a needless conversion at both ends which slows the whole
+process down, but it's how extraflags is set up and we need to support
+it.
+
+Data looks like this:
+#+BEGIN_SRC javascript
+  [
+      {
+          {"post_nr": "123"},
+          {"regions": "flag1||flag2||flag3"}
+      },
+      {
+          {"post_nr": "456"},
+          {"regions": "flag4||flag3||flag3"}
+      }
+  ]
+#+END_SRC
+
+*** V2
+Minimum script version: 2
+
+Flags are converted from an =IEnumerable<IGrouping<int, DataRow>>= to
+a =Dictionary<int, IEnumerable<string>>= which can then be parsed by
+the script without any conversion. This format is the same as returned
+from the database query, sans the extra information returned by a
+=DataRow=
+
+Data looks like this:
+#+BEGIN_SRC javascript
+  [
+      123: [
+          "flag1",
+          "flag2",
+          "flag3"
+      ],
+      456: [
+          "flag4",
+          "flag3",
+          "flag3"
+      ] 
+  ]
+#+END_SRC
