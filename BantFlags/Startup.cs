@@ -1,4 +1,5 @@
 using BantFlags.Data;
+using BantFlags.Data.Database;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using System.IO;
 
 namespace BantFlags
 {
@@ -33,7 +35,7 @@ namespace BantFlags
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             string webroot = Configuration.GetValue<string>("webroot");
-            if (webroot != null)
+            if (Directory.Exists(webroot))
             {
                 env.WebRootPath = webroot;
                 env.WebRootFileProvider = new PhysicalFileProvider(env.WebRootPath);

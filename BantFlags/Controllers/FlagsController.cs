@@ -1,7 +1,7 @@
 ﻿using BantFlags.Data;
+using BantFlags.Data.Database;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
@@ -16,21 +16,16 @@ namespace BantFlags.Controllers
     {
         private DatabaseService Database { get; }
 
-        private ILogger Logger { get; }
-
         private string FlagList { get; set; }
 
         private HashSet<string> DatabaseFlags { get; set; }
 
-        public FlagsController(DatabaseService db, ILogger<FlagsController> logger)
+        public FlagsController(DatabaseService db)
         {
             Database = db;
-            Logger = logger;
 
-            // During initialisation we get the current list of flags for
-            // resolving supported flags and preventing duplicate flags from
-            // being created
-            List<string> flags = Database.GetFlags().Result;
+            // During initialisation we get the current list of flags for resolving supported flags and preventing duplicate flags from being created
+            var flags = Database.GetFlags().Result; // If this fails the program should exit anyway.
 
             FlagList = string.Join("\n", flags);
             DatabaseFlags = flags.ToHashSet();
@@ -45,13 +40,21 @@ namespace BantFlags.Controllers
         {
             try
             {
-                var posts = await Database.GetPosts(post_nrs);
+                int ver = int.TryParse(version, out int x) ? x : 0;
 
-                return Json(posts);
+                if (ver > 1)
+                {
+                    // Improved flag sending, see Docs/GetPosts
+                    return Json(await Database.GetPosts_V2(post_nrs));
+                }
+                else
+                {
+                    return Json(await Database.GetPosts_V1(post_nrs));
+                }
             }
             catch (Exception e)
             {
-                return Problem(e.Message, statusCode: StatusCodes.Status400BadRequest); // TODO: We shouldn't send the exception message
+                return Problem(ErrorMessage(e), statusCode: StatusCodes.Status400BadRequest);
             }
         }
 
@@ -86,8 +89,13 @@ namespace BantFlags.Controllers
 
         [HttpGet]
         [Route("flags")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public IActionResult Flags() => Ok(FlagList);
 
+        /// <summary>
+        /// Creates an error mesage to send in case of 400 bad request, without giving away too much information.
+        /// </summary>
+        /// <param name="exception">Raw exception to be filtered.</param>
         private string ErrorMessage(Exception exception) =>
             exception switch
             {
