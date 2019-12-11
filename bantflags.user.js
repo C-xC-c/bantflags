@@ -34,7 +34,7 @@ const regionDivider = "||"; //TODO: We can probably remove this and seperate by 
 const is_archive = window.location.host !== "boards.4chan.org";
 const boardID = "bant"; //TODO: Hardcode /bant/ or accept other boards.
 const version = 2; // Breaking changes.
-const back_end = 'https://flags.plum.moe';
+const back_end = 'https://flags.plum.moe/';
 const api_flags = 'api/flags';
 const flag_dir = 'flags/';
 const api_get = 'api/get';
