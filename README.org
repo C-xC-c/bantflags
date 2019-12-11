@@ -39,7 +39,7 @@ declarations. Update your hecking browser.
 *** Setup
 1. Install .NET
 2. Clone and build the BantFlags solution.
-3. Create the database using [[https://github.com/C-xC-c/BantFlags/tree/master/environment/database.sql][database.sql]].
+3. Create the database using [[https://github.com/C-xC-c/BantFlags/blob/master/Environment/database.sql][database.sql]].
   + *Change the password*.
 4. configure =BantFlags/appsettings.example.json= with your connection
    string and webroot (the working directory / where you'll serve the
@@ -57,10 +57,10 @@ declarations. Update your hecking browser.
    database directly), and place image *with the same name* in
    ={webroot}/flags/=.
 6. Configure your webserver of choice to forward requests to kestral
-  + [[https://github.com/C-xC-c/BantFlags/tree/master/environment/nginx.conf][Example nginx config.]]
+  + [[https://github.com/C-xC-c/BantFlags/blob/master/Environment/nginx.conf][Example nginx config.]]
 7. Run with =dotnet BantFlags.dll= or create a service to run it as a
    daemon.
-  + [[https://github.com/C-xC-c/BantFlags/tree/master/environment/bantflags.service][Example systemd service.]]
+  + [[https://github.com/C-xC-c/BantFlags/blob/master/Environment/bantflags.service][Example systemd service.]]
 8. ???
 9. profit.
 
