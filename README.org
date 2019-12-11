@@ -5,9 +5,9 @@ originally based on [[https://github.com/flaghunters/Extra-Flags-for-4chan][extr
  [[https://flags.plum.moe/bantflags.user.js][Install bantflags]]
 
 ** Userscript
-The userscript takes advantage of =GM_xmlhttpRequest= to get and set flags with 
-the backend. A user's flags are stored between pages using =GM_setValue= and
-=GM_getValue=.
+The userscript uses of =GM_xmlhttpRequest= to get and post flags with
+the backend . A user's flags are stored between pages using
+=GM_setValue= and =GM_getValue=.
 
 Old versions of GreaseMonkey will be able to recieve updates to the
 script through use of the =@updateURL= and =@downloadURL= directives,
@@ -38,24 +38,31 @@ declarations. Update your hecking browser.
 
 *** Setup
 1. Install .NET
-2. Clone and build the BantFlags .NET project.
+2. Clone and build the BantFlags solution.
 3. Create the database using =database.sql=.
   + *Change the password*.
 4. configure =BantFlags/appsettings.example.json= with your connection
-   string and webroot (the directory you wish to serve the flags from)
-   and rename it to =appsettings.json=
+   string and webroot (the working directory / where you'll serve the
+   flags from) and rename it to =appsettings.json=
   + The location of the BantFlags application and the served content
     are not necessarly the same. If you leave it empty, or provide a
     nonexistant path the application will look for the =wwwroot=
     folder inside the working directory.
+    + For example, you may place =BantFlags.dll= and
+      =appsettings.json= in =/etc/bantflags/= and point =webroot= at
+      =/var/www/html= and bantflags will server static content from
+      that directory, or leave =webroot= empty and bantflags will look
+      for static content in =/etc/bantflags/wwwroot=
   + This should be placed either in inside the working directory or
     the same directory as the program.
 5. Add flags to the backend (currently only possible by querying the
    database directly), and place image *with the same name* in
    ={webroot}/flags/=.
 6. Configure your webserver of choice to forward requests to kestral
-  + Example nginx config.
-7. Run the application
+  + [[https://github.com/C-xC-c/BantFlags/tree/master/environment/nginx.conf][Example nginx config.]]
+7. Run with =dotnet BantFlags.dll= or create a service to run it as a
+   daemon.
+  + [[https://github.com/C-xC-c/BantFlags/tree/master/environment/bantflags.service][Example systemd service.]]
 8. ???
 9. profit.
 
@@ -75,16 +82,7 @@ Tables look like this:
 |  2 |       1 |    2 |
 |  2 |       2 |    2 |
 where post_nr and flag in *postflags* are the id fields in their
-respective tables. 
-
-extraflags stores all of a post's flags in one table as a varchar,
-seperated by "||", which is split and joined by the script when
-getting and posting respectively. This is extraordinarily inefficient,
-but for their purposes it's not such a glaring issue (the highest
-amount of flags I've seen is 6). One aim of this rewrite is to
-greatly increase the amount of flags usable at once, and this database
-structure allows the maximum to be arbitrarily high.
-
+respective tables.
 *** API
 The backend exposes three endpoints used by the userscript to get and
 post flags, and a flags directory storing the images themselves.
@@ -97,7 +95,8 @@ post flags, and a flags directory storing the images themselves.
 | /flags/*   | The flag images                            |
 
 ** Backwards Compatibility
-The API is 1:1 compatable with all previous versions of bantflags,
-but also encodes a new =version= variable when getting flags which
-allows for breaking changes in the script while the backend only 
-sends data it knows is parsable.
+The API is 1:1 compatable with all previous versions of bantflags, but
+also encodes a new =version= variable when getting flags which allows
+for breaking changes in the script while the backend only sends data
+it knows is parsable. See [[https://github.com/C-xC-c/BantFlags/tree/master/Docs/][Docs/{endpoint}]]
+for version compatibility.
