@@ -23,7 +23,7 @@
 // This script specifically targets ECMAScript 2015 (const, let, arrow functions). Update your hecking browser.
 
 // Change this if you want verbose debug information in the console.
-const debugMode = true;
+const debugMode = false;
 
 //
 // DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE CONFIGURATION BOXES
@@ -34,7 +34,7 @@ const regionDivider = "||"; //TODO: We can probably remove this and seperate by 
 const is_archive = window.location.host !== "boards.4chan.org";
 const boardID = "bant"; //TODO: Hardcode /bant/ or accept other boards.
 const version = 2; // Breaking changes.
-const back_end = 'https://localhost:44366/';
+const back_end = 'https://flags.plum.moe';
 const api_flags = 'api/flags';
 const flag_dir = 'flags/';
 const api_get = 'api/get';
