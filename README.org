@@ -4,7 +4,25 @@ originally based on [[https://github.com/flaghunters/Extra-Flags-for-4chan][extr
 
  [[https://flags.plum.moe/bantflags.user.js][Install bantflags]]
 
-** Running
+** Userscript
+The userscript takes advantage of =GM_xmlhttpRequest= to get and set flags with 
+the backend. A user's flags are stored between pages using =GM_setValue= and
+=GM_getValue=.
+
+Old versions of GreaseMonkey will be able to recieve updates to the
+script through use of the =@updateURL= and =@downloadURL= directives,
+though these were depricated sometime in GreaseMonkey 3.x and updates
+are only checked from the location the script was downloaded from so
+be careful where you upload links.
+
+On self hosting, changing =back_end= to your domain /should/ be all
+you need to do, but don't take this as fact.
+
+The userscript has been designed specifically to target ECMAScript
+2015 (ES6), making liberal use of arrow functions, and const/let
+declarations. Update your hecking browser.
+
+** Backend
 *** Prerequisites
 - .NET core 3.1
 - Mariadb / mysql
@@ -41,9 +59,6 @@ originally based on [[https://github.com/flaghunters/Extra-Flags-for-4chan][extr
 8. ???
 9. profit.
 
-Such a setup /should/ map 1:1 to the userscript just by changing the
-variable =back_end= though I can't say I've ever tried it.
-
 *** Database
 Tables look like this:
 *posts*
@@ -59,16 +74,30 @@ Tables look like this:
 |  1 |       1 |    1 |
 |  2 |       1 |    2 |
 |  2 |       2 |    2 |
+where post_nr and flag in *postflags* are the id fields in their
+respective tables. 
 
-where post_nr and flag in *postflags* are the primary key in their respective tables.
+extraflags stores all of a post's flags in one table as a varchar,
+seperated by "||", which is split and joined by the script when
+getting and posting respectively. This is extraordinarily inefficient,
+but for their purposes it's not such a glaring issue (the highest
+amount of flags I've seen is 6). One aim of this rewrite is to
+greatly increase the amount of flags usable at once, and this database
+structure allows the maximum to be arbitrarily high.
 
 *** API
 The backend exposes three endpoints used by the userscript to get and
 post flags, and a flags directory storing the images themselves.
 
-| route      | purpse                    |
-|------------+---------------------------|
-| /api/get   | Get flags in a thread     |
-| /api/post  | Add flags to the database |
-| /api/flags | List the flags we support |
-| /flags/*   | The flag images           |
+| route      | purpse                                     |
+|------------+--------------------------------------------|
+| /api/get   | Get flags using post numbers in the thread |
+| /api/post  | Add flags to the database                  |
+| /api/flags | List the flags we support                  |
+| /flags/*   | The flag images                            |
+
+** Backwards Compatibility
+The API is 1:1 compatable with all previous versions of bantflags,
+but also encodes a new =version= variable when getting flags which
+allows for breaking changes in the script while the backend only 
+sends data it knows is parsable.
