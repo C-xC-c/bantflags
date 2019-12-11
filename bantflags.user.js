@@ -10,7 +10,7 @@
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     0.7.2
+// @version     1.0.0
 // @grant       GM_xmlhttpRequest
 // @grant       GM_getValue
 // @grant       GM_setValue
@@ -30,16 +30,18 @@ const debugMode = true;
 //
 const postRemoveCounter = 60;
 const requestRetryInterval = 5000; // TODO: maybe a max retries counter?
-const regionVariable = 'regionVariableAPI2'; // TODO: This is where GM stores flags permanantly. We could use a better name.
 const regionDivider = "||"; //TODO: We can probably remove this and seperate by ,
 const is_archive = window.location.host !== "boards.4chan.org";
 const boardID = "bant"; //TODO: Hardcode /bant/ or accept other boards.
-const version = 1; // Breaking changes.
-const back_end = 'https://flags.plum.moe/';
+const version = 2; // Breaking changes.
+const back_end = 'https://localhost:44366/';
 const api_flags = 'api/flags';
 const flag_dir = 'flags/';
 const api_get = 'api/get';
 const api_post = 'api/post';
+
+// If you increase this the server will ignore your post.
+const max_flags = 24;
 
 var regions = []; // The flags we have selected.
 var postNrs = []; // all post numbers in the thread.
@@ -47,11 +49,6 @@ var postNrs = []; // all post numbers in the thread.
 //
 // DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE CONFIGURATION BOXES
 //
-
-function ToggleFlagButton() {
-    let flagButton = document.getElementById("append_flag_button").disabled;
-    flagButton = flagButton === true ? false : true;
-}
 
 let elementsInClass = x => document.getElementsByClassName(x);
 let sliceCall = x => Array.prototype.slice.call(x);
@@ -78,10 +75,10 @@ function debug(text) {
 }
 
 /** Wrapper around GM_xmlhttpRequest
-  * @param {string} method - The HTTP method (GET, POST)
-  * @param {string} url - The URL of the request
-  * @param {string} data - Data sent inn the form body
-  * @param {Function} func - The function run after onload. Response data is sent directly to it. */
+ * @param {string} method - The HTTP method (GET, POST)
+ * @param {string} url - The URL of the request
+ * @param {string} data - Data sent inn the form body
+ * @param {Function} func - The function run after onload. Response data is sent directly to it. */
 function MakeRequest(method, url, data, func) {
     GM_xmlhttpRequest({
         method: method,
@@ -125,10 +122,10 @@ var nsetup = { // not anymore a clone of the original setup
 
                 let flagSelect = document.getElementById("flagSelect");
                 let flagLoad = document.getElementById('flagLoad');
-                let x = resp.responseText.split('\n');
+                let flagsSupported = resp.responseText.split('\n');
 
-                for (var i = 0; i < x.length; i++) {
-                    let flag = x[i];
+                for (var i = 0; i < flagsSupported.length; i++) {
+                    let flag = flagsSupported[i];
                     flagSelect.appendChild(createAndAssign('option', {
                         value: flag,
                         innerHTML: "<img src=\"" + back_end + flag_dir + flag + ".png\"" + " title=\"" + flag + "\">" + " " + flag
@@ -141,11 +138,10 @@ var nsetup = { // not anymore a clone of the original setup
                 flagLoad.removeEventListener('click', nsetup.fillHtml);
             });
     },
-    save: function (k, v) {
-        GM_setValue(nsetup.namespace + k, v);
-        regions = nsetup.load(regionVariable);
+    save: function (v) {
+        GM_setValue(nsetup.namespace, v);
+        regions = GM_getValue(nsetup.namespace);
     },
-    load: k => GM_getValue(nsetup.namespace + k), // We can get rid of this and just pass regionVariable to GM_getvalue in the two places we need it.
     setFlag: function (flag) { // place a flag from the selector to the flags array variable and create an element in the flags_container div
         let UID = Math.random().toString(36).substring(7);
         let flagName = flag ? flag : document.getElementById("flagSelect").value;
@@ -158,21 +154,20 @@ var nsetup = { // not anymore a clone of the original setup
             className: 'bantflags_flag'
         }));
 
-        let flagsCount = flagContainer.children.length;
-        if (flagsCount > 8) {// TODO: set to constant and enforce server side.
-            nsetup.gray("on");
-        } // Why does 8 work? What happened to the async issue a moment ago?
+        if (flagContainer.children.length > max_flags) {
+            nsetup.ToggleFlagButton('off');
+        }
 
         document.getElementById(UID).addEventListener("click", function () {
             let flagToRemove = document.getElementById(UID);
 
             flagToRemove.parentNode.removeChild(flagToRemove);
-            nsetup.gray("off");
-            nsetup.save(regionVariable, nsetup.parse());
+            nsetup.toggleFlagButton('on');
+            nsetup.save(nsetup.parse());
         });
 
         if (!flag) {
-            nsetup.save(regionVariable, nsetup.parse());
+            nsetup.save(nsetup.parse());
         }
     },
 
@@ -193,14 +188,9 @@ var nsetup = { // not anymore a clone of the original setup
             nsetup.setFlag(regions[i]);
         }
 
-        document.getElementById("append_flag_button").addEventListener("click", (e) => {
-            if (nsetup.flagsLoaded) {
-                nsetup.setFlag();
-            }
-            else {
-                alert('Load flags before adding them.');
-            }
-        });
+        document.getElementById('append_flag_button').addEventListener('click',
+            () => nsetup.flagsLoaded ? nsetup.setFlag() : alert('Load flags before adding them.'));
+
         document.getElementById('flagLoad').addEventListener('click', nsetup.fillHtml);
     },
     parse: function () {
@@ -213,13 +203,11 @@ var nsetup = { // not anymore a clone of the original setup
 
         return flagsArray;
     },
-
-    // TODO: We should pass a bool to this?
-    gray: state => document.getElementById("append_flag_button").disabled = state === "on" ? true : false
+    ToggleFlagButton: state => document.getElementById('append_flag_button').disabled = state === 'off' ? true : false
 };
 
-/** Prompt to set region if regionVariable is empty  */
-regions = nsetup.load(regionVariable); // TODO: move this to other init stuff
+/** Prompt to set region if regions is empty  */
+regions = GM_getValue(nsetup.namespace); // TODO: move this to other init stuff
 if (!regions) {
     regions = [];
     setTimeout(function () {
@@ -249,36 +237,37 @@ function parseFoolFuukaPosts() {
 function onFlagsLoad(response) {
 
     // because we only care about the end result, not how we got there.
+    // grandparent -> first parent -> first child.
     let hopHTML = (post_nr, first, second) =>
         firstChildInClass(firstChildInClass(document.getElementById(post_nr), first), second);
 
-    let MakeFlag = (flag) => createAndAssign('a', {
-        innerHTML: "<img src=\"" + back_end + flag_dir + flag + ".png\" title=\"" + flag + "\">",
-        className: "bantFlag",
-        target: "_blank"
-    });
+    let MakeFlag = (flag) =>
+        createAndAssign('a', {
+            innerHTML: "<img src=\"" + back_end + flag_dir + flag + ".png\" title=\"" + flag + "\">",
+            className: "bantFlag",
+            target: "_blank"
+        });
 
     debug("JSON: " + response.responseText);
     var jsonData = JSON.parse(response.responseText);
 
-    jsonData.forEach(function (post) {
-        debug(post);
+    Object.keys(jsonData).forEach(function (post) {
         let flagContainer = is_archive
-            ? hopHTML(post.post_nr, "post_data", "post_type")
-            : hopHTML("pc" + post.post_nr, "postInfo", "nameBlock");
+            ? hopHTML(post, "post_data", "post_type")
+            : hopHTML("pc" + post, "postInfo", "nameBlock");
         let currentFlag = firstChildInClass(flagContainer, 'flag');
-        let postedRegions = post.region.split(regionDivider);
+        let flags = jsonData[post];
 
         // If we have a bantflag and the original post has a flag
-        if (postedRegions.length > 0 && currentFlag !== undefined) {
-            console.log("[BantFlags] Resolving flags for >>" + post.post_nr);
+        if (flags.length > 0 && currentFlag !== undefined) {
+            console.log("[BantFlags] Resolving flags for >>" + post);
 
-            for (var i = 0; i < postedRegions.length; i++) {
-                let flag = postedRegions[i];
+            for (var i = 0; i < flags.length; i++) {
+                let flag = flags[i];
 
                 let newFlag = MakeFlag(flag);
                 if (is_archive) {
-                    newFlag.style = "padding: 0px 0px 0px " + (3 + 4 * (i > 0)) + "px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;";
+                    newFlag.style = "padding: 0px 0px 0px " + (3 + 2 * (i > 0)) + "px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;";
                 }
 
                 flagContainer.append(newFlag);
@@ -286,33 +275,9 @@ function onFlagsLoad(response) {
                 console.log("\t -> " + flag);
             }
         }
-
-        // TODO: This can be postNrs.pop()?
-        // postNrs are resolved and should be removed from this variable
-        var index = postNrs.indexOf(post.post_nr);
-        if (index > -1) {
-            postNrs.splice(index, 1);
-        }
     });
 
-    // TODO: do I need this?
-    // Removing posts older than the time limit (they likely won't resolve)
-    var timestampMinusPostRemoveCounter = Math.round(+new Date() / 1000) - postRemoveCounter; //should i remove this?
-
-    postNrs.forEach(function (post_nr) {
-        let dateTime = is_archive
-
-            // lol didn't expect to get to use this again
-            ? hopHTML(post_nr, 'post_data', 'time_wrap')
-            : hopHTML("pc" + post_nr, 'postInfo', 'dateTime');
-
-        if (dateTime.getAttribute("data-utc") < timestampMinusPostRemoveCounter) {
-            var index = postNrs.indexOf(post_nr);
-            if (index > -1) {
-                postNrs.splice(index, 1);
-            }
-        }
-    });
+    postNrs = [];
 }
 
 function resolveRefFlags() {
@@ -366,7 +331,7 @@ if (!is_archive) {
 
         //setTimeout to support greasemonkey 1.x
         setTimeout(function () {
-            var data = "post_nr=" + encodeURIComponent(e.detail.postID) + "&board=" + encodeURIComponent(e.detail.boardID) + "&regions=" + encodeURIComponent(regions.slice().join(regionDivider));
+            var data = "post_nr=" + encodeURIComponent(e.detail.postID) + "&board=" + encodeURIComponent(e.detail.boardID) + "&regions=" + encodeURIComponent(regions) + "&version=" + encodeURIComponent(version);
             MakeRequest(method, url, data, func);
         }, 0);
     }, false);
@@ -377,7 +342,7 @@ if (!is_archive) {
 
         //setTimeout to support greasemonkey 1.x
         setTimeout(function () {
-            var data = "post_nr=" + encodeURIComponent(evDetail.postId) + "&board=" + encodeURIComponent(boardID) + "&regions=" + encodeURIComponent(regions.slice().join(regionDivider));
+            var data = "post_nr=" + encodeURIComponent(evDetail.postId) + "&board=" + encodeURIComponent(boardID) + "&regions=" + encodeURIComponent(regions) + "&version=" + encodeURIComponent(version);
             MakeRequest(method, url, data, func);
         }, 0);
     }, false);

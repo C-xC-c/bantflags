@@ -37,7 +37,8 @@ namespace BantFlags.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Get([FromForm]string post_nrs, [FromForm]string board, [FromForm]string version)
-        {
+        { // TODO: version can be an int?.
+          // int ver = verson ?? 0
             try
             {
                 int ver = int.TryParse(version, out int x) ? x : 0;
@@ -58,23 +59,47 @@ namespace BantFlags.Controllers
             }
         }
 
+        /// <summary>
+        /// Posts flags in the database.
+        /// </summary>
+        /// <param name="post_nr">The post number to associate the flags to.</param>
+        /// <param name="board">/bant/.</param>
+        /// <param name="regions">List of flags to associate with the post. Split by "||" in API V1 and "," in V2.</param>
         [HttpPost]
         [Route("post")]
         [Consumes("application/x-www-form-urlencoded")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Post([FromForm]string post_nr, [FromForm]string board, [FromForm]string regions)
-        {
+        public async Task<IActionResult> Post([FromForm]string post_nr, [FromForm]string board, [FromForm]string regions, [FromForm]int? version)
+        { // Should we rename regions? It'd be more idomatic for it to be flags or something but then we have to introduce a new variable that does the same thing.
             try // We only care if the post if valid.
             {
+                string[] flags;
+                int ver = version ?? 0;
+
+                if (ver > 1)
+                {
+                    flags = regions.Split(",");
+                }
+                else
+                {
+                    flags = regions.Split("||");
+                }
+
                 // TODO: Currently we skip over invalid flags. Should we error instead?
-                var flags = regions.Split("||").Where(x => DatabaseFlags.Contains(x));
+                var validFlags = flags.Where(x => DatabaseFlags.Contains(x));
+
+                var numberOfFlags = validFlags.Count();
+                if (numberOfFlags <= 0 || numberOfFlags > 25)
+                {
+                    throw new ArgumentException("Your post didn't include any flags, or your flags were invalid.");
+                }
 
                 FlagModel post = new FlagModel
                 {
-                    PostNumber = int.TryParse(post_nr, out int temp) ? temp : throw new FormatException("Bad post number."),
-                    Board = board == "bant" ? "bant" : throw new FormatException("Board parameter wasn't formatted correctly."),
-                    Flags = flags.Count() > 0 ? flags : throw new FormatException("Your post didn't include any flags, or your flags were invalid.")
+                    PostNumber = int.TryParse(post_nr, out int temp) ? temp : throw new ArgumentException("Invalid post number."),
+                    Board = board == "bant" ? "bant" : throw new ArgumentException("Board parameter wasn't formatted correctly."),
+                    Flags = validFlags
                 };
 
                 await Database.InsertPost(post);
@@ -99,9 +124,10 @@ namespace BantFlags.Controllers
         private string ErrorMessage(Exception exception) =>
             exception switch
             {
-                FormatException e => e.Message,
+                NullReferenceException _ => "Some data wasn't initialised. Are you sending everything?",
                 DbException _ => "Internal database error.",
                 ArgumentNullException _ => "No regions sent",
+                ArgumentException e => e.Message,
                 Exception e => e.Message, // Don't do this.
                 _ => "how in the hell"
             }; // This needs more testing.
