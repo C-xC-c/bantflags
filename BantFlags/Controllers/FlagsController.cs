@@ -135,7 +135,7 @@ namespace BantFlags.Controllers
                 NullReferenceException _ => "Some data wasn't initialised. Are you sending everything?",
                 DbException _ => "Internal database error.",
                 ArgumentNullException _ => "No regions sent",
-                ArgumentException e => e.Message, // We create all arguement exceptions here, so we can pass the message on.
+                ArgumentException e => e.Message, // We create all arguement exceptions here, we can just pass the message on.
                 Exception e => e.Message, // Don't do this.
                 _ => "how in the hell"
             }; // This needs more testing.
