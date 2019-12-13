@@ -50,10 +50,10 @@ var postNrs = []; // all post numbers in the thread.
 // DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE CONFIGURATION BOXES
 //
 
-let elementsInClass = x => document.getElementsByClassName(x);
-let sliceCall = x => Array.prototype.slice.call(x);
-let firstChildInClass = (parent, className) => parent.getElementsByClassName(className)[0];
-let createAndAssign = (element, source) => Object.assign(document.createElement(element), source);
+const elementsInClass = x => document.getElementsByClassName(x);
+const sliceCall = x => Array.prototype.slice.call(x);
+const firstChildInClass = (parent, className) => parent.getElementsByClassName(className)[0];
+const createAndAssign = (element, source) => Object.assign(document.createElement(element), source);
 
 function addGlobalStyle(css) {
     let head = document.getElementsByTagName('head')[0];
@@ -93,7 +93,7 @@ function MakeRequest(method, url, data, func) {
 
 function retry(func, resp) {
     console.log("[BantFlags] Could not fetch flags, status: " + resp.status);
-    console.log(resp.statusText); // TODO: surely ASP.NET can return something more useful?
+    console.log(resp.statusText);
     setTimeout(func, requestRetryInterval);
 }
 
@@ -135,7 +135,7 @@ var nsetup = { // not anymore a clone of the original setup
                 flagLoad.style.display = 'none';
                 flagSelect.style.display = 'inline-block';
                 nsetup.flagsLoaded = true;
-                flagLoad.removeEventListener('click', nsetup.fillHtml);
+                // flagLoad.removeEventListener('click', nsetup.fillHtml);
             });
     },
     save: function (v) {
@@ -155,7 +155,7 @@ var nsetup = { // not anymore a clone of the original setup
         }));
 
         if (flagContainer.children.length > max_flags) {
-            nsetup.ToggleFlagButton('off');
+            nsetup.toggleFlagButton('off');
         }
 
         document.getElementById(UID).addEventListener("click", function () {
@@ -191,7 +191,7 @@ var nsetup = { // not anymore a clone of the original setup
         document.getElementById('append_flag_button').addEventListener('click',
             () => nsetup.flagsLoaded ? nsetup.setFlag() : alert('Load flags before adding them.'));
 
-        document.getElementById('flagLoad').addEventListener('click', nsetup.fillHtml);
+        document.getElementById('flagLoad').addEventListener('click', nsetup.fillHtml, { once: true });
     },
     parse: function () {
         let flagsArray = [];
@@ -203,7 +203,7 @@ var nsetup = { // not anymore a clone of the original setup
 
         return flagsArray;
     },
-    ToggleFlagButton: state => document.getElementById('append_flag_button').disabled = state === 'off' ? true : false
+    toggleFlagButton: state => document.getElementById('append_flag_button').disabled = state === 'off' ? true : false
 };
 
 /** Prompt to set region if regions is empty  */
