@@ -1,0 +1,24 @@
+body {
+    background: #ffe url(fade.png) top center repeat-x;
+}
+
+h1, h2, h3 {
+    color: maroon;
+}
+
+h3 {
+    clear: both;
+    padding-top: 20px;
+}
+
+.flag-container {
+    width: 60%;
+    margin: auto;
+}
+
+.flag {
+    margin: auto;
+    width: 12%;
+    display: block;
+    padding-bottom: 10px;
+}

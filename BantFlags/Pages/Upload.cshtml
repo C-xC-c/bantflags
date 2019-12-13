@@ -1,0 +1,131 @@
+﻿@page
+@using  BantFlags.Data
+@model BantFlags.UploadModel
+@{
+    ViewData["Title"] = "Upload";
+    Layout = "~/Pages/Shared/_Layout.cshtml";
+}
+
+<h1>Upload</h1>
+<img src="~/montage.png" />
+@Model.Message
+
+<h2>Add a Flag</h2>
+<form method="post" asp-page-handler="Add" enctype="multipart/form-data">
+    <input type="file" asp-for="Upload" />
+    @Html.CheckBoxFor(model => model.ShouldGloss)<span>Apply Gloss?</span>
+    <br />
+    <br />
+    <input type="submit" value="Upload Flag" />
+</form>
+
+<h2>Manage Existing Flags</h2>
+<form method="post" enctype="multipart/form-data">
+    <label>Flag:</label>
+    <select name="flag">
+        @foreach (string s in Model.staging.Flags)
+        {
+            <option>@s</option>
+        }
+    </select>
+    <label>New Name:</label>
+    <input type="text" name="newName" />
+    <br />
+    <br />
+    <button asp-page-handler="Delete" type="submit">Delete Flag</button>
+    <button asp-page-handler="Rename" type="submit">Rename Flag</button>
+</form>
+
+<h2>Commit Changes</h2>
+<form method="post" asp-page-handler="Commit" enctype="multipart/form-data">
+    <label>Password:</label>
+    <input type="text" name="password" />
+    <br />
+    <br />
+    <input type="submit" value="Commit Changes" />
+</form>
+
+<h2>Pending Changes</h2>
+<form method="post" asp-page-handler="Unstage">
+    <label>Password:</label>
+    <input type="text" name="password" />
+    <button type="submit" onclick="window.confirm('Really unstage the selected flags?')">unstage</button>
+    @if (Model.staging.AddedFlags.Any())
+    {
+        <h3>New Flags</h3>
+        <div class="flag-container">
+
+            @foreach (FormFlag flag in Model.staging.AddedFlags)
+            {
+                <div class="flag">
+                    <img src="~/flags/staging/@(flag.Name).png" />
+                    <br />
+                    <span>@flag.Name</span>
+                    <input type="hidden" name="addedAndDeletedFlags.Index" value="@flag.Name" />
+                    <input type="hidden" name="addedAndDeletedFlags[@flag.Name].Name" value="@flag.Name" />
+                    <input type="hidden" name="addedAndDeletedFlags[@flag.Name].Method" value="@Method.Add" />
+                    <br />
+                    <input type="checkbox" name="addedAndDeletedFlags[@flag.Name].IsChecked" value="true" />
+                </div>
+            }
+        </div>
+    }
+
+    @if (Model.staging.DeletedFlags.Any())
+    {
+        <h3>Deleted Flags</h3>
+        <div class="flag-container">
+            @foreach (FormFlag flag in Model.staging.DeletedFlags)
+            {
+                <div class="flag">
+                    <img src="~/flags/@(flag.Name).png" />
+                    <br />
+                    <span>@flag.Name</span>
+                    <input type="hidden" name="addedAndDeletedFlags.Index" value="@flag.Name" />
+                    <input type="hidden" name="addedAndDeletedFlags[@flag.Name].Name" value="@flag.Name" />
+                    <input type="hidden" name="addedAndDeletedFlags[@flag.Name].Method" value="@Method.Delete" />
+                    <br />
+                    <input type="checkbox" name="addedAndDeletedFlags[@flag.Name].IsChecked" value="true" />
+                </div>
+            }
+        </div>
+
+    }
+
+    @if (Model.staging.RenamedFlags.Any())
+    {
+        <h3>Renamed Flags</h3>
+        <div class="flag-container">
+            @foreach (RenameFlag flag in Model.staging.RenamedFlags)
+            {
+                <div class="flag">
+                    <img src="~/flags/@(flag.Name).png" />
+                    <br />
+                    <span>@flag.NewName</span>
+                    <input type="hidden" name="renamedFlags.Index" value="@flag.Name" />
+                    <input type="hidden" name="renamedFlags[@flag.Name].Name" value="@flag.Name" />
+                    <input type="hidden" name="renamedFlags[@flag.Name].Method" value="@Method.Rename" />
+                    <input type="hidden" name="renamedFlags[@flag.Name].NewName" value="@flag.NewName" />
+                    <br />
+                    <input type="checkbox" name="renamedFlags[@flag.Name].IsChecked" value="true" />
+                </div>
+
+            }
+        </div>
+    }
+</form>
+
+@section Scripts {
+    @* Place flag image inside the <select> because ASP removes "invalid HTML" *@
+    <script>
+        let x = document.getElementsByTagName('select')[0].children
+        Array.prototype.slice.call(x).forEach(function (e) {
+            var name = e.innerHTML;
+            e.innerHTML = "<img src=\"https://flags.plum.moe/flags/" + name + ".png\">" + name
+        });
+    </script>
+}
+
+@section Head {
+    <link rel="stylesheet" href="~/form.css" />
+}

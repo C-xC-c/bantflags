@@ -3,7 +3,6 @@ using BantFlags.Data.Database;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
-using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,36 +15,31 @@ namespace BantFlags.Controllers
     {
         private DatabaseService Database { get; }
 
-        private string FlagList { get; set; }
-
-        private HashSet<string> DatabaseFlags { get; set; }
-
         public FlagsController(DatabaseService db)
         {
             Database = db;
-
-            // During initialisation we get the current list of flags for resolving supported flags and preventing duplicate flags from being created
-            var flags = Database.GetFlags().Result; // If this fails the program should exit anyway.
-
-            FlagList = string.Join("\n", flags);
-            DatabaseFlags = flags.ToHashSet();
         }
 
+        /// <summary>
+        /// Retrives flags from the database from the posts sent in post_nrs
+        /// </summary>
+        /// <param name="post_nrs">The comma seperated list of post numbers from the thread.</param>
+        /// <param name="board">Currently should only be /bant/. Not checked here because we don't need to care what they send.</param>
+        /// <param name="version">The version of the userscript.</param>
         [HttpPost]
         [Route("get")]
         [Consumes("application/x-www-form-urlencoded")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Get([FromForm]string post_nrs, [FromForm]string board, [FromForm]string version)
-        { // TODO: version can be an int?.
-          // int ver = verson ?? 0
-            try
+        public async Task<IActionResult> Get([FromForm]string post_nrs, [FromForm]string board, [FromForm]int? version)
+        {
+            try // We only care if the post if valid.
             {
-                int ver = int.TryParse(version, out int x) ? x : 0;
+                int ver = version ?? 0;
 
                 if (ver > 1)
                 {
-                    // Improved flag sending, see Docs/GetPosts
+                    // Improved data structuring, see Docs/GetPosts
                     return Json(await Database.GetPosts_V2(post_nrs));
                 }
                 else
@@ -63,15 +57,16 @@ namespace BantFlags.Controllers
         /// Posts flags in the database.
         /// </summary>
         /// <param name="post_nr">The post number to associate the flags to.</param>
-        /// <param name="board">/bant/.</param>
+        /// <param name="board">Currently should only be /bant/.</param>
         /// <param name="regions">List of flags to associate with the post. Split by "||" in API V1 and "," in V2.</param>
+        /// <param name="version">The version of the userscript.</param>
         [HttpPost]
         [Route("post")]
         [Consumes("application/x-www-form-urlencoded")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Post([FromForm]string post_nr, [FromForm]string board, [FromForm]string regions, [FromForm]int? version)
-        { // Should we rename regions? It'd be more idomatic for it to be flags or something but then we have to introduce a new variable that does the same thing.
+        {
             try // We only care if the post if valid.
             {
                 string[] flags;
@@ -87,7 +82,20 @@ namespace BantFlags.Controllers
                 }
 
                 // TODO: Currently we skip over invalid flags. Should we error instead?
-                var validFlags = flags.Where(x => DatabaseFlags.Contains(x));
+                // We can't easily format it like in the current bantflags - we really should continue to
+                // return "empty, or there were errors. Re-set your flags.", for compatibility, but we'd
+                // have to store that as a flag in the database and perform an expensive string comparison
+                // to stop people selecting it.
+                // Do we care if people select the broken flag?
+                var validFlags = flags.Where(x => Database.KnownFlags().Contains(x));
+
+                for (int i = 0; i < flags.Length; i++)
+                {
+                    if (!Database.KnownFlags().Contains(flags[i]))
+                    {
+                        flags[i] = "empty, or there were errors. Re-set your flags.";
+                    }
+                }
 
                 var numberOfFlags = validFlags.Count();
                 if (numberOfFlags <= 0 || numberOfFlags > 25)
@@ -115,7 +123,7 @@ namespace BantFlags.Controllers
         [HttpGet]
         [Route("flags")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public IActionResult Flags() => Ok(FlagList);
+        public IActionResult Flags() => Ok(Database.FlagList());
 
         /// <summary>
         /// Creates an error mesage to send in case of 400 bad request, without giving away too much information.
@@ -127,7 +135,7 @@ namespace BantFlags.Controllers
                 NullReferenceException _ => "Some data wasn't initialised. Are you sending everything?",
                 DbException _ => "Internal database error.",
                 ArgumentNullException _ => "No regions sent",
-                ArgumentException e => e.Message,
+                ArgumentException e => e.Message, // We create all arguement exceptions here, so we can pass the message on.
                 Exception e => e.Message, // Don't do this.
                 _ => "how in the hell"
             }; // This needs more testing.

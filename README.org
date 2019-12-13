@@ -35,6 +35,8 @@ declarations. Update your hecking browser.
 - Microsoft.AspNetCore.StaticFiles
 - Microsoft.EntityFrameworkCore.SqlServer
 - Microsoft.EntityFrameworkCore.Tools
+- Microsoft.VisualStudio.Web.CodeGeneration.Design
+- Magick.NET-Q8-AnyCPU
 
 *** Setup
 1. Install .NET
@@ -42,8 +44,8 @@ declarations. Update your hecking browser.
 3. Create the database using [[https://github.com/C-xC-c/BantFlags/blob/master/Environment/database.sql][database.sql]].
   + *Change the password*.
 4. configure =BantFlags/appsettings.example.json= with your connection
-   string and webroot (the working directory / where you'll serve the
-   flags from) and rename it to =appsettings.json=
+   string and webroot (where you'll serve the flags from *without a 
+   trailing /*) and rename it to =appsettings.json=
   + The location of the BantFlags application and the served content
     are not necessarly the same. If you leave it empty, or provide a
     nonexistant path the application will look for the =wwwroot=
@@ -53,9 +55,9 @@ declarations. Update your hecking browser.
       =/var/www/html= and bantflags will server static content from
       that directory, or leave =webroot= empty and bantflags will look
       for static content in =/etc/bantflags/wwwroot=
-5. Add flags to the backend (currently only possible by querying the
-   database directly), and place image *with the same name* in
-   ={webroot}/flags/=.
+5. Add flags to the backend either by querying the database directly 
+   and placing images *with the same name* in ={webroot}/flags/= or
+   by using /upload.
 6. Configure your webserver of choice to forward requests to kestral
   + [[https://github.com/C-xC-c/BantFlags/blob/master/Environment/nginx.conf][Example nginx config.]]
 7. Run with =dotnet BantFlags.dll= or create a service to run it as a
@@ -66,6 +68,7 @@ declarations. Update your hecking browser.
 
 *** Database
 Tables look like this:
+
 *posts*
 | id | post_nr | board |
 |  1 |   12345 | bant  |

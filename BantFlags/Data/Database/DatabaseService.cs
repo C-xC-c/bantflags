@@ -1,4 +1,5 @@
-﻿using System.Data;
+﻿using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -11,9 +12,53 @@ namespace BantFlags.Data.Database
     {
         private MySqlConnectionPool ConnectionPool { get; }
 
+        private string Flags { get; set; }
+
+        private HashSet<string> FlagsHash { get; set; }
+
         public DatabaseService(DatabaseServiceConfig dbConfig)
         {
             ConnectionPool = new MySqlConnectionPool(dbConfig.ConnectionString, dbConfig.PoolSize);
+
+            var flags = GetFlags().Result; // It's okay to error here since it's only initialised at startup.
+
+            Flags = string.Join("\n", flags);
+            FlagsHash = flags.ToHashSet();
+        }
+
+        public string FlagList() => Flags;
+
+        public HashSet<string> KnownFlags() => FlagsHash;
+
+        public async Task UpdateKnownFlags()
+        {
+            var flags = await GetFlags();
+
+            Flags = string.Join("\n", flags);
+            FlagsHash = flags.ToHashSet();
+        }
+
+        public async Task DeleteFlagsAsync(List<FormFlag> flags)
+        {
+            using var rentedConnection = await ConnectionPool.RentConnectionAsync();
+            using var query = rentedConnection.Object.UseStoredProcedure("delete_flag");
+
+            flags.ForEach(async f =>
+                await query.SetParam("@flag", f.Name)
+                    .ExecuteNonQueryAsync(reuse: true));
+
+            return;
+        }
+
+        public async Task RenameFlagsAsync(List<RenameFlag> flags)
+        {
+            using var rentedConnection = await ConnectionPool.RentConnectionAsync();
+            using var query = rentedConnection.Object.UseStoredProcedure("rename_flag");
+
+            flags.ForEach(async flag =>
+                await query.SetParam("@old", flag.Name)
+                    .SetParam("@new", flag.NewName)
+                    .ExecuteNonQueryAsync(reuse: true));
         }
 
         public async Task InsertPost(FlagModel post)
@@ -41,7 +86,7 @@ namespace BantFlags.Data.Database
         /// <summary>
         /// Returns all of the flags that we support.
         /// </summary>
-        public async Task<EnumerableRowCollection<string>> GetFlags()
+        public async Task<List<string>> GetFlags()
         {
             using var rentedConnected = await ConnectionPool.RentConnectionAsync();
 
@@ -49,7 +94,20 @@ namespace BantFlags.Data.Database
                 .ExecuteTableAsync();
 
             return table.AsEnumerable()
-                .Select(x => x.GetValue<string>("flag"));
+                .Select(x => x.GetValue<string>("flag"))
+                .ToList();
+        }
+
+        public async Task InsertFlagsAsync(List<FormFlag> flags)
+        {
+            using var rentedConnection = await ConnectionPool.RentConnectionAsync();
+            using var query = rentedConnection.Object.UseStoredProcedure("insert_flag");
+
+            flags.ForEach(async f =>
+                await query.SetParam("@flag", f.Name)
+                .ExecuteNonQueryAsync(reuse: true));
+
+            return;
         }
     }
 

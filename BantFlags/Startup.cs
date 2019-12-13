@@ -1,13 +1,16 @@
 using BantFlags.Data;
 using BantFlags.Data.Database;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace BantFlags
 {
@@ -28,7 +31,15 @@ namespace BantFlags
 
             services.AddRazorPages();
 
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) // For image upload during production.
+            {
+                services.AddDataProtection()
+                    .SetApplicationName("BantFlags")
+                    .PersistKeysToFileSystem(new DirectoryInfo(@"/var/www/dotnet/bantflags/wtf-keys/"));
+            }
+
             services.AddSingleton(new DatabaseService(Configuration.GetSection("dbconfig").Get<DatabaseServiceConfig>()));
+            services.AddSingleton(new Staging(Configuration.GetValue<string>("staging-password")));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -61,8 +72,8 @@ namespace BantFlags
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllers();
                 endpoints.MapRazorPages();
+                endpoints.MapControllers();
             });
         }
     }
