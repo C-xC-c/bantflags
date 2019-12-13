@@ -49,6 +49,8 @@
 <form method="post" asp-page-handler="Unstage">
     <label>Password:</label>
     <input type="text" name="password" />
+    <br />
+    <br />
     <button type="submit" onclick="window.confirm('Really unstage the selected flags?')">unstage</button>
     @if (Model.staging.AddedFlags.Any())
     {
@@ -115,17 +117,19 @@
     }
 </form>
 
+@section Head {
+    <link rel="stylesheet" href="~/upload.css" />
+}
+
 @section Scripts {
     @* Place flag image inside the <select> because ASP removes "invalid HTML" *@
     <script>
-        let x = document.getElementsByTagName('select')[0].children
-        Array.prototype.slice.call(x).forEach(function (e) {
-            var name = e.innerHTML;
-            e.innerHTML = "<img src=\"https://flags.plum.moe/flags/" + name + ".png\">" + name
-        });
+        window.addEventListener('load', function (e) {
+            let x = document.getElementsByTagName('select')[0].children
+            Array.prototype.slice.call(x).forEach(function (y) {
+                var name = y.innerHTML;
+                y.innerHTML = "<img src=\"https://flags.plum.moe/flags/" + name + ".png\">" + name
+            });
+        }, { once: true });
     </script>
-}
-
-@section Head {
-    <link rel="stylesheet" href="~/form.css" />
 }

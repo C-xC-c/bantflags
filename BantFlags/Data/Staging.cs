@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace BantFlags.Data
 {
@@ -12,8 +13,15 @@ namespace BantFlags.Data
         public List<FormFlag> DeletedFlags { get; set; }
         public List<FormFlag> AddedFlags { get; set; }
 
+        /// <summary>
+        /// The current list of resolved flags including changes currently in Staging.
+        /// Exists here since it's a singleton.
+        /// </summary>
         public List<string> Flags { get; set; }
 
+        /// <summary>
+        /// Used for commiting and unstaging staged flags.
+        /// </summary>
         public string Password { get; }
 
         public Staging(string password)

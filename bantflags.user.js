@@ -22,7 +22,7 @@
 
 // This script specifically targets ECMAScript 2015 (const, let, arrow functions). Update your hecking browser.
 
-// Change this if you want verbose debug information in the console.
+// Change this if you want verbose debuging information in the console.
 const debugMode = false;
 
 //
@@ -41,7 +41,7 @@ const api_get = 'api/get';
 const api_post = 'api/post';
 
 // If you increase this the server will ignore your post.
-const max_flags = 24;
+const max_flags = 30;
 
 var regions = []; // The flags we have selected.
 var postNrs = []; // all post numbers in the thread.
@@ -50,10 +50,10 @@ var postNrs = []; // all post numbers in the thread.
 // DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE CONFIGURATION BOXES
 //
 
-let elementsInClass = x => document.getElementsByClassName(x);
-let sliceCall = x => Array.prototype.slice.call(x);
-let firstChildInClass = (parent, className) => parent.getElementsByClassName(className)[0];
-let createAndAssign = (element, source) => Object.assign(document.createElement(element), source);
+const elementsInClass = x => document.getElementsByClassName(x);
+const sliceCall = x => Array.prototype.slice.call(x);
+const firstChildInClass = (parent, className) => parent.getElementsByClassName(className)[0];
+const createAndAssign = (element, source) => Object.assign(document.createElement(element), source);
 
 function addGlobalStyle(css) {
     let head = document.getElementsByTagName('head')[0];
@@ -93,7 +93,7 @@ function MakeRequest(method, url, data, func) {
 
 function retry(func, resp) {
     console.log("[BantFlags] Could not fetch flags, status: " + resp.status);
-    console.log(resp.statusText); // TODO: surely ASP.NET can return something more useful?
+    console.log(resp.statusText);
     setTimeout(func, requestRetryInterval);
 }
 
@@ -135,14 +135,13 @@ var nsetup = { // not anymore a clone of the original setup
                 flagLoad.style.display = 'none';
                 flagSelect.style.display = 'inline-block';
                 nsetup.flagsLoaded = true;
-                flagLoad.removeEventListener('click', nsetup.fillHtml);
             });
     },
     save: function (v) {
         GM_setValue(nsetup.namespace, v);
         regions = GM_getValue(nsetup.namespace);
     },
-    setFlag: function (flag) { // place a flag from the selector to the flags array variable and create an element in the flags_container div
+    setFlag: function (flag) {
         let UID = Math.random().toString(36).substring(7);
         let flagName = flag ? flag : document.getElementById("flagSelect").value;
         let flagContainer = document.getElementById("bantflags_container");
@@ -154,16 +153,18 @@ var nsetup = { // not anymore a clone of the original setup
             className: 'bantflags_flag'
         }));
 
-        if (flagContainer.children.length > max_flags) {
-            nsetup.ToggleFlagButton('off');
+        if (flagContainer.children.length >= max_flags) {
+            nsetup.toggleFlagButton('off');
         }
 
         document.getElementById(UID).addEventListener("click", function () {
+            console.log("removing flag");
             let flagToRemove = document.getElementById(UID);
 
             flagToRemove.parentNode.removeChild(flagToRemove);
             nsetup.toggleFlagButton('on');
             nsetup.save(nsetup.parse());
+            console.log("flag removed");
         });
 
         if (!flag) {
@@ -191,7 +192,7 @@ var nsetup = { // not anymore a clone of the original setup
         document.getElementById('append_flag_button').addEventListener('click',
             () => nsetup.flagsLoaded ? nsetup.setFlag() : alert('Load flags before adding them.'));
 
-        document.getElementById('flagLoad').addEventListener('click', nsetup.fillHtml);
+        document.getElementById('flagLoad').addEventListener('click', nsetup.fillHtml, { once: true });
     },
     parse: function () {
         let flagsArray = [];
@@ -203,7 +204,7 @@ var nsetup = { // not anymore a clone of the original setup
 
         return flagsArray;
     },
-    ToggleFlagButton: state => document.getElementById('append_flag_button').disabled = state === 'off' ? true : false
+    toggleFlagButton: state => document.getElementById('append_flag_button').disabled = state === 'off' ? true : false
 };
 
 /** Prompt to set region if regions is empty  */

@@ -31,7 +31,6 @@ namespace BantFlags.Data.Database
             List<Dictionary<string, string>> posts = new List<Dictionary<string, string>>();
 
             var x = await GetPosts(input);
-
             x.ForEach(x => posts.Add(new Dictionary<string, string>
                 {
                     {"post_nr", x.Key.ToString() },

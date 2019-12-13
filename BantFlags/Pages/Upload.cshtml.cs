@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 
 namespace BantFlags
 {
+    // I don't know if I need these anymore.
     [RequestFormLimits(ValueCountLimit = 5000)]
     [IgnoreAntiforgeryToken(Order = 2000)]
     public class UploadModel : PageModel
@@ -21,7 +22,7 @@ namespace BantFlags
         private IWebHostEnvironment Env { get; }
         private DatabaseService Database { get; set; }
 
-        private readonly byte[] pngHeader = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+        private readonly byte[] PNGHeader = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
 
         private string FlagsPath { get; set; }
 
@@ -183,7 +184,7 @@ namespace BantFlags
                     return Page();
                 }
 
-                // TODO: maybe there's something no releasing memory here.
+                // TODO: maybe there's something no releasing memory here. - can't Directory.Move().
 
                 using var memoryStream = new MemoryStream();
                 await Upload.CopyToAsync(memoryStream);
@@ -215,7 +216,7 @@ namespace BantFlags
             }
             catch (Exception e)
             {
-                Message = $"Something went bang.\n{e.Message}";
+                Message = $"Something went bang.\n\n\n{e.Message}";
 
                 return Page();
             }
@@ -254,7 +255,7 @@ namespace BantFlags
                 {
                     reader.BaseStream.Position = 0;
 
-                    return reader.ReadBytes(pngHeader.Length).SequenceEqual(pngHeader);
+                    return reader.ReadBytes(PNGHeader.Length).SequenceEqual(PNGHeader);
                 }
             }
         }
@@ -268,8 +269,12 @@ namespace BantFlags
         private bool FileNameIsValid(string fileName) =>
             !(fileName == null
                 || fileName.Contains("||")
-                || Database.KnownFlags().Contains(fileName)
+                || fileName.Contains(",")
+                || Database.KnownFlags.Contains(fileName)
                 || staging.AddedFlags.Select(x => x.Name).Contains(fileName)
+                || staging.DeletedFlags.Select(x => x.Name).Contains(fileName)
+                || staging.RenamedFlags.Select(x => x.Name).Contains(fileName)
+                || staging.RenamedFlags.Select(x => x.NewName).Contains(fileName)
                 || fileName.Length > 100);
     }
 }

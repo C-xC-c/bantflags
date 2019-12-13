@@ -12,30 +12,24 @@ namespace BantFlags.Data.Database
     {
         private MySqlConnectionPool ConnectionPool { get; }
 
-        private string Flags { get; set; }
+        public string FlagList { get; private set; }
 
-        private HashSet<string> FlagsHash { get; set; }
+        public HashSet<string> KnownFlags { get; private set; }
 
         public DatabaseService(DatabaseServiceConfig dbConfig)
         {
             ConnectionPool = new MySqlConnectionPool(dbConfig.ConnectionString, dbConfig.PoolSize);
 
-            var flags = GetFlags().Result; // It's okay to error here since it's only initialised at startup.
-
-            Flags = string.Join("\n", flags);
-            FlagsHash = flags.ToHashSet();
+            UpdateKnownFlags().Wait(); // It's okay to deadlock here since it's only initialised at startup.
         }
-
-        public string FlagList() => Flags;
-
-        public HashSet<string> KnownFlags() => FlagsHash;
 
         public async Task UpdateKnownFlags()
         {
             var flags = await GetFlags();
+            flags.Remove("empty, or there were errors. Re-set your flags.");
 
-            Flags = string.Join("\n", flags);
-            FlagsHash = flags.ToHashSet();
+            FlagList = string.Join("\n", flags);
+            KnownFlags = flags.ToHashSet();
         }
 
         public async Task DeleteFlagsAsync(List<FormFlag> flags)
@@ -46,8 +40,6 @@ namespace BantFlags.Data.Database
             flags.ForEach(async f =>
                 await query.SetParam("@flag", f.Name)
                     .ExecuteNonQueryAsync(reuse: true));
-
-            return;
         }
 
         public async Task RenameFlagsAsync(List<RenameFlag> flags)
@@ -79,8 +71,6 @@ namespace BantFlags.Data.Database
                         .ExecuteNonQueryAsync(reuse: true));
                 }
             }
-
-            return;
         }
 
         /// <summary>
@@ -106,8 +96,6 @@ namespace BantFlags.Data.Database
             flags.ForEach(async f =>
                 await query.SetParam("@flag", f.Name)
                 .ExecuteNonQueryAsync(reuse: true));
-
-            return;
         }
     }
 

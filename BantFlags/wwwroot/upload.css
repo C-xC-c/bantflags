@@ -19,6 +19,6 @@ h3 {
 .flag {
     margin: auto;
     width: 12%;
-    display: block;
+    display: inline-block;
     padding-bottom: 10px;
 }
