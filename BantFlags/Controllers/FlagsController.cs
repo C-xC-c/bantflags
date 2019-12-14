@@ -66,7 +66,7 @@ namespace BantFlags.Controllers
                 return Problem(post.ErrorMessage, statusCode: StatusCodes.Status400BadRequest);
             }
 
-            //await Database.InsertPost(post.Value);
+            await Database.InsertPost(post.Value);
 
             return Ok(post);
         }
