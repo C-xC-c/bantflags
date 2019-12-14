@@ -2,9 +2,6 @@
 using BantFlags.Data.Database;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Data.Common;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace BantFlags.Controllers
@@ -74,6 +71,9 @@ namespace BantFlags.Controllers
             return Ok(post);
         }
 
+        /// <summary>
+        /// Gets the list of supported flags.
+        /// </summary>
         [HttpGet]
         [Route("flags")]
         [ProducesResponseType(StatusCodes.Status200OK)]

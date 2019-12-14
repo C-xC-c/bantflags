@@ -39,7 +39,7 @@ namespace BantFlags.Data
 
             foreach (string flag in flags)
             {
-                if (!knownFlags.Contains(flag)) // Not ideal but it's better than doing it in the controller / passing the database here.
+                if (!knownFlags.Contains(flag)) // Not ideal but it's better than doing it in the controller or passing the database here.
                 {
                     flags = new string[] { "empty, or there were errors. Re-set your flags." };
                     break;

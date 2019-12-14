@@ -26,16 +26,16 @@ namespace BantFlags
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers()
-                .AddNewtonsoftJson();
+            services.AddControllers().AddNewtonsoftJson();
 
             services.AddRazorPages();
 
+            // TODO: this shouldn't just be for Linux.
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) // For image upload during production.
             {
                 services.AddDataProtection()
                     .SetApplicationName("BantFlags")
-                    .PersistKeysToFileSystem(new DirectoryInfo(@"/var/www/dotnet/bantflags/wtf-keys/"));
+                    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "keys")));
             }
 
             services.AddSingleton(new DatabaseService(Configuration.GetSection("dbconfig").Get<DatabaseServiceConfig>()));
