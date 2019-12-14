@@ -59,14 +59,14 @@ namespace BantFlags.Controllers
         {
             string splitFlag = (version ?? 0) > 1 ? "," : "||"; // comma for v2+, else || for backwards compatibility.
 
-            (bool isValid, FlagModel post, string errorMessage) = FlagModel.Create(post_nr, board, regions, splitFlag, Database.KnownFlags);
+            Result<PostModel> post = PostModel.Create(post_nr, board, regions, splitFlag, Database.KnownFlags);
 
-            if (!isValid)
+            if (post.Failed)
             {
-                return Problem(errorMessage, statusCode: StatusCodes.Status400BadRequest);
+                return Problem(post.ErrorMessage, statusCode: StatusCodes.Status400BadRequest);
             }
 
-            await Database.InsertPost(post);
+            //await Database.InsertPost(post.Value);
 
             return Ok(post);
         }

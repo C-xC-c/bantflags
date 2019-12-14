@@ -53,7 +53,7 @@ namespace BantFlags.Data.Database
                     .ExecuteNonQueryAsync(reuse: true));
         }
 
-        public async Task InsertPost(FlagModel post)
+        public async Task InsertPost(PostModel post)
         {
             using (var rentedConnection = await ConnectionPool.RentConnectionAsync())
             {
