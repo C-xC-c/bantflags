@@ -10,10 +10,10 @@ Minimum script version: 0
 
 Flags are converted from an =IEnumerable<IGrouping<int, DataRow>>= to
 a =List<Dictionary<string, string>>= by joining the values in the
-=DataRow= by "||", which are then split and converted into an array by
-the script.
+=DataRow= by "||". These are then split by the same seperator and
+converted into an array on the script's end.
 
-We're doing a needless conversion at both ends which slows the whole
+We're doing needless conversions at both ends which slows the whole 
 process down, but it's how extraflags is set up and we need to support
 it.
 
@@ -35,9 +35,9 @@ Data looks like this:
 Minimum script version: 2
 
 Flags are converted from an =IEnumerable<IGrouping<int, DataRow>>= to
-a =Dictionary<int, IEnumerable<string>>= which can then be parsed by
-the script without any conversion. This format is the same as returned
-from the database query, sans the extra information returned by a
+a =Dictionary<int, IEnumerable<string>>= which are parsed by the 
+userscript without any conversion. This format is the same as returned
+from the database query, sans extra information contained in a
 =DataRow=
 
 Data looks like this:
