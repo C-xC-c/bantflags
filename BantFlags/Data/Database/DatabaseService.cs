@@ -32,27 +32,6 @@ namespace BantFlags.Data.Database
             KnownFlags = flags.ToHashSet();
         }
 
-        public async Task DeleteFlagsAsync(List<FormFlag> flags)
-        {
-            using var rentedConnection = await ConnectionPool.RentConnectionAsync();
-            using var query = rentedConnection.Object.UseStoredProcedure("delete_flag");
-
-            flags.ForEach(async f =>
-                await query.SetParam("@flag", f.Name)
-                    .ExecuteNonQueryAsync(reuse: true));
-        }
-
-        public async Task RenameFlagsAsync(List<RenameFlag> flags)
-        {
-            using var rentedConnection = await ConnectionPool.RentConnectionAsync();
-            using var query = rentedConnection.Object.UseStoredProcedure("rename_flag");
-
-            flags.ForEach(async flag =>
-                await query.SetParam("@old", flag.Name)
-                    .SetParam("@new", flag.NewName)
-                    .ExecuteNonQueryAsync(reuse: true));
-        }
-
         public async Task InsertPost(PostModel post)
         {
             using (var rentedConnection = await ConnectionPool.RentConnectionAsync())
@@ -88,14 +67,29 @@ namespace BantFlags.Data.Database
                 .ToList();
         }
 
-        public async Task InsertFlagsAsync(List<FormFlag> flags)
+        public async Task InsertFlagAsync(Flag flag)
         {
             using var rentedConnection = await ConnectionPool.RentConnectionAsync();
-            using var query = rentedConnection.Object.UseStoredProcedure("insert_flag");
+            await rentedConnection.Object.UseStoredProcedure("insert_flag")
+                .SetParam("@flag", flag.Name)
+                .ExecuteNonQueryAsync();
+        }
 
-            flags.ForEach(async f =>
-                await query.SetParam("@flag", f.Name)
-                .ExecuteNonQueryAsync(reuse: true));
+        public async Task RenameFlagAsync(Flag flag)
+        {
+            using var rentedConnection = await ConnectionPool.RentConnectionAsync();
+            await rentedConnection.Object.UseStoredProcedure("rename_flag")
+                .SetParam("@old", flag.OldName)
+                .SetParam("@new", flag.Name)
+                .ExecuteNonQueryAsync();
+        }
+
+        public async Task DeleteFlagAsync(Flag flag)
+        {
+            using var rentedConnection = await ConnectionPool.RentConnectionAsync();
+            await rentedConnection.Object.UseStoredProcedure("delete_flag")
+                .SetParam("@flag", flag.Name)
+                .ExecuteNonQueryAsync();
         }
     }
 

@@ -7,274 +7,181 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace BantFlags
 {
-    // I don't know if I need these anymore.
-    [RequestFormLimits(ValueCountLimit = 5000)]
-    [IgnoreAntiforgeryToken(Order = 2000)]
     public class UploadModel : PageModel
     {
-        private IWebHostEnvironment Env { get; }
         private DatabaseService Database { get; set; }
-
-        private readonly byte[] PNGHeader = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
-
-        private string FlagsPath { get; set; }
-
-        public Staging staging { get; set; }
-
-        public UploadModel(IWebHostEnvironment env, DatabaseService db, Staging s)
-        {
-            Env = env;
-            Database = db;
-
-            staging = s;
-
-            FlagsPath = Env.WebRootPath + "/flags/";
-        }
-
+        public Staging StagedFlags { get; set; }
         public string Message { get; private set; }
 
-        // TODO: These bound properties should be inlined.
-        [BindProperty]
-        public IFormFile Upload { get; set; }
+        private string WebRoot { get; }
 
-        [BindProperty]
-        public bool ShouldGloss { get; set; }
+        public HashSet<string> AllNames => StagedFlags.Names.Concat(StagedFlags.Flags.Select(x => x.Name)).ToHashSet();
 
-        public async void OnGet()
+        public UploadModel(DatabaseService dbs, Staging ns, IWebHostEnvironment env)
         {
-            if (staging.Flags == null)
-            {
-                staging.Flags = await Database.GetFlags(); // Because we can't populate Flags in the constructor.
-            }
+            Database = dbs;
+
+            StagedFlags = ns;
+
+            WebRoot = env.WebRootPath;
         }
 
-        public IActionResult OnPostUnstage(List<FormFlag> addedAndDeletedFlags, List<RenameFlag> renamedFlags, string password)
+        public void OnGet()
         {
-            if (password != staging.Password) // TODO: Maybe we should hash this?
-            {
-                Message = "Wrong Password";
-                return Page();
-            }
-
-            try // Haha I can't program
-            {
-                var addedAndDeleted = addedAndDeletedFlags.Where(x => x.IsChecked);
-                var renamed = renamedFlags.Where(x => x.IsChecked);
-
-                addedAndDeleted.ForEach(x =>
-                    _ = x.FormMethod switch
-                    {
-                        // Using an enum seems kinda redundant here.
-                        Method.Delete => staging.DeletedFlags.Remove(staging.DeletedFlags.First(y => y.Name == x.Name)),
-                        Method.Add => staging.AddedFlags.Remove(staging.AddedFlags.First(y => y.Name == x.Name)),
-                        _ => throw new Exception()
-                    });
-
-                renamed.ForEach(x => staging.RenamedFlags.Remove(staging.RenamedFlags.First(y => y.Name == x.Name))); // These can be reworked to use asp-for and then we can work off the original objects.
-
-                addedAndDeleted.ForEach(x => staging.Flags.Add(x.Name));
-                renamed.ForEach(x => staging.Flags.Add(x.Name));
-
-                staging.Flags = staging.Flags.Distinct().OrderBy(x => x).ToList();
-
-                Message = $"Successfully unstaged flags";
-            }
-            catch
-            {
-                Message = "Something went very wrong";
-            }
-
-            return Page();
-        }
-
-        public async Task<IActionResult> OnPostCommitAsync(string password)
-        {
-            if (password != staging.Password)
-            {
-                Message = "Wrong Password";
-                return Page();
-            }
-            try
-            {
-                // TODO: This needs to be rewritten / burnt / both
-                if (staging.DeletedFlags.Any())
-                {
-                    await Database.DeleteFlagsAsync(staging.DeletedFlags);
-
-                    staging.DeletedFlags
-                        .ForEach(flag => System.IO.File.Copy(Path.Combine(FlagsPath, flag.Name + ".png"), Path.Combine(FlagsPath, "dead/", flag.Name + ".png")));
-                }
-
-                if (staging.AddedFlags.Any())
-                {
-                    await Database.InsertFlagsAsync(staging.AddedFlags);
-
-                    staging.AddedFlags
-                        .ForEach(flag => System.IO.File.Copy(Path.Combine(FlagsPath, "staging/", flag.Name + ".png"), Path.Combine(FlagsPath, flag.Name + ".png")));
-                }
-
-                if (staging.RenamedFlags.Any())
-                {
-                    await Database.RenameFlagsAsync(staging.RenamedFlags);
-
-                    staging.RenamedFlags
-                        .ForEach(flag => System.IO.File.Copy(Path.Combine(FlagsPath, flag.Name + ".png"), Path.Combine(FlagsPath, flag.NewName + ".png")));
-                }
-
-                await Database.UpdateKnownFlags();
-                staging.Flags = await Database.GetFlags();
-                staging.Clear();
-
-                Message = "Changes Commited successfully";
-            }
-            catch (Exception e)
-            {
-                Message = "Something went bang\n" + e.Message;
-            }
-
-            return Page();
+            StagedFlags.Names = StagedFlags.Names ?? Database.KnownFlags;
         }
 
         public IActionResult OnPostDelete(string flag)
         {
-            staging.DeletedFlags.Add(new FormFlag
-            {
-                Name = flag
-            });
+            var stagingFlag = Flag.CreateFromDelete(flag).Value;
 
-            staging.Flags.Remove(flag);
+            StagedFlags.Flags.Add(stagingFlag);
+            StagedFlags.Names.Remove(stagingFlag.Name);
 
+            Message = $"{stagingFlag.Name} deleted.";
             return Page();
         }
 
         public IActionResult OnPostRename(string flag, string newName)
         {
-            if (!(FileNameIsValid(newName)))
-            {
-                Message = "Invalid Filename.";
+            var stagingFlag = Flag.CreateFromRename(flag, newName, AllNames);
 
+            if (stagingFlag.Failed)
+            {
+                Message = stagingFlag.ErrorMessage;
                 return Page();
             }
 
-            staging.RenamedFlags.Add(new RenameFlag
-            {
-                Name = flag,
-                NewName = newName
-            });
+            StagedFlags.Flags.Add(stagingFlag.Value);
+            StagedFlags.Names.Remove(stagingFlag.Value.OldName);
 
-            staging.Flags.Remove(flag);
-
+            Message = $"{stagingFlag.Value.OldName} renamed to {stagingFlag.Value.Name}.";
             return Page();
         }
 
-        public async Task<IActionResult> OnPostAddAsync()
+        public async Task<IActionResult> OnPostAddAsync(IFormFile upload, bool gloss)
         {
-            try
+            var stagingFlag = await Flag.CreateFromFile(upload, AllNames);
+
+            if (stagingFlag.Failed)
             {
-                if (!(await ValidateImageAsync()))
-                {
-                    Message = "Invalid Image.";
-                    return Page();
-                }
-
-                // TODO: maybe there's something no releasing memory here. - can't Directory.Move().
-
-                using var memoryStream = new MemoryStream();
-                await Upload.CopyToAsync(memoryStream);
-
-                memoryStream.Position = 0;
-
-                // Magic.NET is a huge dependency to be used like this
-                // Maybe we should switch to a Process and expect to have
-                // ImageMagick installed on the target machine.
-                using var image = new MagickImage(memoryStream);
-
-                if (ShouldGloss)
-                {
-                    using var gloss = new MagickImage(Env.WebRootPath + "/gloss.png");
-
-                    gloss.Composite(image, new PointD(0, 0), CompositeOperator.Over);
-                }
-
-                image.Write(FlagsPath + "staging/" + Upload.FileName);
-
-                staging.AddedFlags.Add(new FormFlag
-                {
-                    Name = Path.GetFileNameWithoutExtension(Upload.FileName)
-                });
-
-                Message = "Flag uploaded successfully!";
-
+                Message = stagingFlag.ErrorMessage;
                 return Page();
             }
-            catch (Exception e)
-            {
-                Message = $"Something went bang.\n\n\n{e.Message}";
 
+            using var memoryStream = new MemoryStream();
+            await upload.CopyToAsync(memoryStream);
+
+            memoryStream.Position = 0;
+
+            // Magic.NET is a huge dependency to be used like this
+            // Maybe we should switch to a Process and expect to have
+            // ImageMagick installed on the target machine.
+            using var image = new MagickImage(memoryStream);
+
+            if (gloss)
+            {
+                using var glossImage = new MagickImage(WebRoot + "/gloss.png");
+
+                glossImage.Composite(image, new PointD(0, 0), CompositeOperator.Over);
+            }
+
+            image.Write(WebRoot + "/flags/staging/" + upload.FileName);
+
+            StagedFlags.Flags.Add(stagingFlag.Value);
+
+            Message = $"{stagingFlag.Value.Name} uploaded";
+            return Page();
+        }
+
+        public IActionResult OnPostUnstage(Flag[] flags, string password)
+        {
+            if (password != StagedFlags.Password)
+            {
+                Message = "Incorrect Password";
                 return Page();
             }
+
+            for (int i = flags.Length - 1; i >= 0; i--)
+            {
+                if (flags[i].IsChecked != true)
+                {
+                    continue;
+                }
+
+                StagedFlags.Flags.RemoveAt(i);
+
+                var flag = flags[i];
+                switch (flag.FlagMethod)
+                {
+                    case Method.Add:
+                        System.IO.File.Delete(WebRoot + "/flags/staging/" + flag.Name);
+                        StagedFlags.Names.Remove(flag.Name);
+                        break;
+
+                    case Method.Delete:
+                        StagedFlags.Names.Add(flag.Name);
+                        break;
+
+                    case Method.Rename:
+                        StagedFlags.Names.Add(flag.OldName);
+                        break;
+
+                    default:
+                        throw new Exception();
+                }
+            }
+
+            Message = "Removed flags from staging";
+            return Page();
         }
 
-        // TODO: hash images and check against for duplicates.
-        // or is that going too far?
-        /// <summary>
-        /// Rigorously validates an image to ensure it's a flag.
-        /// </summary>
-        public async Task<bool> ValidateImageAsync()
+        public async Task<IActionResult> OnPostCommit(string password)
         {
-            var fileName = Path.GetFileNameWithoutExtension(Upload.FileName);
-
-            if (!(FileNameIsValid(fileName))
-                || Upload.Length > 15 * 1024 // 15KB
-                || Upload.ContentType.ToLower() != "image/png")
+            if (password != StagedFlags.Password)
             {
-                return false;
+                Message = "Incorrect Password";
+                return Page();
             }
 
-            using (var memoryStream = new MemoryStream())
+            foreach (var flag in StagedFlags.Flags)
             {
-                await Upload.CopyToAsync(memoryStream);
+                string flagname = flag.Name + ".png";
 
-                memoryStream.Position = 0;
-                using (var image = new MagickImage(memoryStream))
+                switch (flag.FlagMethod)
                 {
-                    if (image.Width != 16 || image.Height != 11)
-                    {
-                        return false;
-                    }
-                }
+                    case Method.Add:
+                        await Database.InsertFlagAsync(flag);
+                        Directory.Move(WebRoot + "/flags/staging/" + flagname, WebRoot + "/flags/" + flagname);
+                        break;
 
-                using (var reader = new BinaryReader(memoryStream))
-                {
-                    reader.BaseStream.Position = 0;
+                    case Method.Delete:
+                        await Database.DeleteFlagAsync(flag);
+                        Directory.Move(WebRoot + "/flags/" + flagname, WebRoot + "/flags/dead/" + flagname);
+                        break;
 
-                    return reader.ReadBytes(PNGHeader.Length).SequenceEqual(PNGHeader);
+                    case Method.Rename:
+                        await Database.RenameFlagAsync(flag);
+                        Directory.Move(WebRoot + "/flags/" + flag.OldName + ".png", WebRoot + "/flags/" + flagname);
+                        break;
+
+                    default:
+                        throw new Exception();
                 }
             }
+
+            await Database.UpdateKnownFlags();
+            StagedFlags.Names = Database.KnownFlags;
+            StagedFlags.Clear();
+
+            Message = "Changes committed successfully";
+            return Page();
         }
-
-        /// <summary>
-        /// Matches bad things we don't want in filenames.
-        /// Inverts the result - returns false on a match.
-        /// </summary>
-        /// <param name="fileName">The name of the file to validate.</param>
-        /// <returns></returns>
-        private bool FileNameIsValid(string fileName) =>
-            !(fileName == null
-                || fileName.Contains("||")
-                || fileName.Contains(",")
-                || Database.KnownFlags.Contains(fileName)
-                || staging.AddedFlags.Select(x => x.Name).Contains(fileName)
-                || staging.DeletedFlags.Select(x => x.Name).Contains(fileName)
-                || staging.RenamedFlags.Select(x => x.Name).Contains(fileName)
-                || staging.RenamedFlags.Select(x => x.NewName).Contains(fileName)
-                || fileName.Length > 100);
     }
 }
