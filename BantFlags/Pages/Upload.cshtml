@@ -51,7 +51,6 @@
         <br />
         <button type="submit">Remove from staging</button>
         <h3>Deleted Flags</h3>
-        @* TODO: There has to be a better way to handle this*@
         @for (int i = 0; i < Model.StagedFlags.Flags.Count(); i++)
         {
             if (Model.StagedFlags.Flags[i].FlagMethod == Method.Delete)
@@ -61,7 +60,7 @@
                     <label>@(Model.StagedFlags.Flags[i].Name)</label>
                     <img src="~/flags/@(Model.StagedFlags.Flags[i].Name).png" />
                     <input type="hidden" name="flags[@i].Name" value="@Model.StagedFlags.Flags[i].Name" />
-                    <input type="hidden" name="flags[@i].FormMethod" value="@Model.StagedFlags.Flags[i].FlagMethod" />
+                    <input type="hidden" name="flags[@i].FlagMethod" value="@Model.StagedFlags.Flags[i].FlagMethod" />
                     <input type="checkbox" name="flags[@i].IsChecked" value="true" />
                 </div>
             }
@@ -77,7 +76,7 @@
                     <label>@(Model.StagedFlags.Flags[i].Name)</label>
                     <img src="~/flags/@(Model.StagedFlags.Flags[i].OldName).png" />
                     <input type="hidden" name="flags[@i].Name" value="@Model.StagedFlags.Flags[i].Name" />
-                    <input type="hidden" name="flags[@i].FormMethod" value="@Model.StagedFlags.Flags[i].FlagMethod" />
+                    <input type="hidden" name="flags[@i].FlagMethod" value="@Model.StagedFlags.Flags[i].FlagMethod" />
                     <input type="checkbox" name="flags[@i].IsChecked" value="true" />
                 </div>
             }
@@ -93,7 +92,7 @@
                     <label>@(Model.StagedFlags.Flags[i].Name)</label>
                     <img src="~/flags/staging/@(Model.StagedFlags.Flags[i].Name).png" />
                     <input type="hidden" name="flags[@i].Name" value="@Model.StagedFlags.Flags[i].Name" />
-                    <input type="hidden" name="flags[@i].FormMethod" value="@Model.StagedFlags.Flags[i].FlagMethod" />
+                    <input type="hidden" name="flags[@i].FlagMethod" value="@Model.StagedFlags.Flags[i].FlagMethod" />
                     <input type="checkbox" name="flags[@i].IsChecked" value="true" />
                 </div>
             }

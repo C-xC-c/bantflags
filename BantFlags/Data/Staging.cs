@@ -29,11 +29,11 @@ namespace BantFlags.Data
 
     public enum Method
     {
-        Delete,
+        Add = 0,
 
-        Rename,
+        Delete = 1,
 
-        Add
+        Rename = 2
     }
 
     public class Flag

@@ -60,6 +60,7 @@ namespace BantFlags
 
             StagedFlags.Flags.Add(stagingFlag.Value);
             StagedFlags.Names.Remove(stagingFlag.Value.OldName);
+            StagedFlags.Names.Add(stagingFlag.Value.Name);
 
             Message = $"{stagingFlag.Value.OldName} renamed to {stagingFlag.Value.Name}.";
             return Page();
@@ -130,6 +131,7 @@ namespace BantFlags
                         break;
 
                     case Method.Rename:
+                        StagedFlags.Names.Remove(flag.Name);
                         StagedFlags.Names.Add(flag.OldName);
                         break;
 
@@ -163,6 +165,10 @@ namespace BantFlags
 
                     case Method.Delete:
                         await Database.DeleteFlagAsync(flag);
+                        if (System.IO.File.Exists(WebRoot + "/flags/dead/" + flagname))
+                        {
+                            System.IO.File.Delete(WebRoot + "/flags/dead/" + flagname);
+                        }
                         Directory.Move(WebRoot + "/flags/" + flagname, WebRoot + "/flags/dead/" + flagname);
                         break;
 
