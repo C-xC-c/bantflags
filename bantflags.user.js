@@ -11,7 +11,7 @@
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     1.1.1
+// @version     1.1.2
 // @grant       GM_xmlhttpRequest
 // @grant       GM_getValue
 // @grant       GM_setValue
@@ -412,6 +412,7 @@ if (site.fourchan) {
 
 if (site.nineball) {
     nsetup.init();
+
     new MutationObserver(function (mutations) {
         mutations.forEach(function (mutation) {
 
@@ -419,6 +420,7 @@ if (site.nineball) {
             if (mutation.target.nodeName === 'THREADS') {
                 setTimeout(getposts('section[id], article[id]'), 2000);
                 resolveRefFlags();
+                nsetup.init();
             }
             if (mutation.addedNodes[0].nodeName === 'HEADER') { // When you make a post
                 let data = 'post_nr=' + encodeURIComponent(mutation.target.id) + '&board=' + encodeURIComponent(board_id) + '&regions=' + encodeURIComponent(regions) + '&version=' + encodeURIComponent(version);
@@ -428,7 +430,7 @@ if (site.nineball) {
                     data,
                     function (resp) {
                         postNrs.push(mutation.target.id);
-                        setTimeout(resolveRefFlags, 0);
+                        resolveRefFlags();
                     });
             }
             if (mutation.addedNodes[0].nodeName === 'ARTICLE') { // When someone else makes a post
