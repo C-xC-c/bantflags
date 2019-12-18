@@ -165,10 +165,12 @@ namespace BantFlags
 
                     case Method.Delete:
                         await Database.DeleteFlagAsync(flag);
+
                         if (System.IO.File.Exists(WebRoot + "/flags/dead/" + flagname))
                         {
-                            System.IO.File.Delete(WebRoot + "/flags/dead/" + flagname);
+                            System.IO.File.Delete(WebRoot + "/flags/dead/" + flagname); // TODO: This is not the right way to handle it.
                         }
+
                         Directory.Move(WebRoot + "/flags/" + flagname, WebRoot + "/flags/dead/" + flagname);
                         break;
 

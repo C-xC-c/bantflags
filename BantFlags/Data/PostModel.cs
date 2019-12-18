@@ -21,12 +21,13 @@ namespace BantFlags.Data
 
         public static Result<PostModel> Create(string post_nr, string board, string regions, string splitFlag, HashSet<string> knownFlags)
         {
-            string[] empty = new string[] { "empty, or there were errors. Re-set your flags." };
+            string[] empty = { "empty, or there were errors. Re-set your flags." };
+            string[] boards = { "bant", "nap", "srsbsn" }; // TODO: Move this to appsettings and make a singleton for it.
 
             if (!int.TryParse(post_nr, out int postNumber))
                 return Result<PostModel>.Fail("Invalid post number.");
 
-            if (board != "bant")
+            if (!boards.Contains(board))
                 return Result<PostModel>.Fail("Invalid board parameter.");
 
             if (regions == null)

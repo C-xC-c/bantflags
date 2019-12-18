@@ -8,29 +8,30 @@ namespace BantFlags.Data.Database
     public partial class DatabaseService
     {
         // Maybe this could be better but I don't know SQL lol
-        private readonly string GetPostsQuery = @"SELECT posts.post_nr, flags.flag FROM flags LEFT JOIN (postflags) ON (postflags.flag = flags.id) LEFT JOIN (posts) ON (postflags.post_nr = posts.id) WHERE FIND_IN_SET(posts.post_nr, (@posts))";
+        private readonly string GetPostsQuery = @"SELECT posts.post_nr, flags.flag FROM flags LEFT JOIN (postflags) ON (postflags.flag = flags.id) LEFT JOIN (posts) ON (postflags.post_nr = posts.id) WHERE FIND_IN_SET(posts.post_nr, (@posts)) AND posts.board = @board";
 
         /// <summary>
         /// Returns the post numbers and their flags from the post numbers in the input.
         /// </summary>
-        /// <param name="input">List of post numbers on the page.</param>
-        public async Task<IEnumerable<IGrouping<int, DataRow>>> GetPosts(string input)
+        /// <param name="post_nr">List of post numbers on the page.</param>
+        public async Task<IEnumerable<IGrouping<int, DataRow>>> GetPosts(string post_nr, string board)
         {
             using var rentedConnection = await ConnectionPool.RentConnectionAsync();
 
             DataTable table = await rentedConnection.Object.CreateQuery(GetPostsQuery)
-                .SetParam("@posts", input)
+                .SetParam("@posts", post_nr)
+                .SetParam("@board", board)
                 .ExecuteTableAsync();
 
             return table.AsEnumerable()
                 .GroupBy(x => x.GetValue<int>("post_nr"));
         }
 
-        public async Task<List<Dictionary<string, string>>> GetPosts_V1(string input)
+        public async Task<List<Dictionary<string, string>>> GetPosts_V1(string post_nr, string board)
         {
             List<Dictionary<string, string>> posts = new List<Dictionary<string, string>>();
 
-            var x = await GetPosts(input);
+            var x = await GetPosts(post_nr, board);
             x.ForEach(x => posts.Add(new Dictionary<string, string>
                 {
                     {"post_nr", x.Key.ToString() },
@@ -40,9 +41,9 @@ namespace BantFlags.Data.Database
             return posts;
         }
 
-        public async Task<Dictionary<int, IEnumerable<string>>> GetPosts_V2(string input)
+        public async Task<Dictionary<int, IEnumerable<string>>> GetPosts_V2(string post_nr, string board)
         {
-            var posts = await GetPosts(input);
+            var posts = await GetPosts(post_nr, board);
             return posts
                 .ToDictionary(
                     x => x.Key,

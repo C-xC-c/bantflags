@@ -26,7 +26,7 @@ namespace BantFlags.Data.Database
         public async Task UpdateKnownFlags()
         {
             var flags = await GetFlags();
-            flags.Remove("empty, or there were errors. Re-set your flags.");
+            flags.Remove("empty, or there were errors. Re-set your flags."); // So users can't select this.
 
             FlagList = string.Join("\n", flags);
             KnownFlags = flags.ToHashSet();

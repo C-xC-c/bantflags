@@ -6,6 +6,7 @@
 // @include     http*://archive.nyafuu.org/bant/*
 // @include     http*://archived.moe/bant/*
 // @include     http*://thebarchive.com/bant/*
+// @include     http*://nineball.party/*
 // @exclude     http*://boards.4chan.org/bant/catalog
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
@@ -29,10 +30,7 @@ const debugMode = false;
 // DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE CONFIGURATION BOXES
 //
 const postRemoveCounter = 60;
-const requestRetryInterval = 5000; // TODO: maybe a max retries counter?
-const regionDivider = "||"; //TODO: We can probably remove this and seperate by ,
-const is_archive = window.location.host !== "boards.4chan.org";
-const boardID = "bant"; //TODO: Hardcode /bant/ or accept other boards.
+const requestRetryInterval = 5000; // TODO: maybe a max retries counter as well?
 const version = 2; // Breaking changes.
 const back_end = 'https://flags.plum.moe/';
 const api_flags = 'api/flags';
@@ -45,14 +43,21 @@ const max_flags = 30;
 
 var regions = []; // The flags we have selected.
 var postNrs = []; // all post numbers in the thread.
+var board_id = ""; // The board we get flags for.
+
+const site = {
+    fourchan: window.location.host === 'boards.4chan.org',
+    nineball: window.location.host === 'nineball.party'
+};
+
+// There are multiple foolfuuka archives we support; this has to be called after site is initialised as to not check each of them.
+// I.E. we'd have to go window.location.host === 'archive.nyafuu.org' || window.location.host === 'archived.moe'
+site.foolfuuka = !site.fourchan && !site.nineball;
 
 //
 // DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE CONFIGURATION BOXES
 //
-
-const elementsInClass = x => document.getElementsByClassName(x);
 const sliceCall = x => Array.prototype.slice.call(x);
-const firstChildInClass = (parent, className) => parent.getElementsByClassName(className)[0];
 const createAndAssign = (element, source) => Object.assign(document.createElement(element), source);
 
 function addGlobalStyle(css) {
@@ -70,7 +75,7 @@ function addGlobalStyle(css) {
 
 function debug(text) {
     if (debugMode) {
-        console.log("[BantFlags] " + text);
+        console.log('[BantFlags] ' + text);
     }
 }
 
@@ -85,27 +90,25 @@ function MakeRequest(method, url, data, func) {
         url: url,
         data: data,
         headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
+            "Content-Type": 'application/x-www-form-urlencoded'
         },
         onload: func
     });
 }
 
 function retry(func, resp) {
-    console.log("[BantFlags] Could not fetch flags, status: " + resp.status);
+    console.log('[BantFlags] Could not fetch flags, status: ' + resp.status);
     console.log(resp.statusText);
     setTimeout(func, requestRetryInterval);
 }
 
 /** nSetup, preferences */
 
-// TODO: this shouldn't be a class.
+// TODO: this shouldn't be a object.
 var nsetup = { // not anymore a clone of the original setup
     namespace: 'BintFlegs', // TODO: should be const.
     flagsLoaded: false,
-    form: "<span id=\"bantflags_container\"></span>" +
-        "<button type=\"button\" id=\"append_flag_button\" title=\"Click to add selected flag to your flags. Click on flags to remove them. Saving happens automatically, you only need to refresh the pages that have an outdated flaglist on the page.\"><<</button>" +
-        "<button id=\"flagLoad\" type=\"button\">Click to load flags.</button><select id=\"flagSelect\"></select>",
+    form: '<span id="bantflags_container"></span><button type="button" id="append_flag_button" title="Click to add selected flag to your flags. Click on flags to remove them. Saving happens automatically, you only need to refresh the pages that have an outdated flaglist on the page."><<</button><button id="flagLoad" type="button">Click to load flags.</button><select id="flagSelect"></select>',
     fillHtml: function () { // TODO: this function should have a better name. Only called by nsetup.init, can be inlined?
 
         // resolve flags
@@ -120,7 +123,7 @@ var nsetup = { // not anymore a clone of the original setup
                     return;
                 }
 
-                let flagSelect = document.getElementById("flagSelect");
+                let flagSelect = document.getElementById('flagSelect');
                 let flagLoad = document.getElementById('flagLoad');
                 let flagsSupported = resp.responseText.split('\n');
 
@@ -128,7 +131,7 @@ var nsetup = { // not anymore a clone of the original setup
                     let flag = flagsSupported[i];
                     flagSelect.appendChild(createAndAssign('option', {
                         value: flag,
-                        innerHTML: "<img src=\"" + back_end + flag_dir + flag + ".png\"" + " title=\"" + flag + "\">" + " " + flag
+                        innerHTML: '<img src="' + back_end + flag_dir + flag + '.png" title="' + flag + '"> ' + flag
                     }));
                 }
 
@@ -143,12 +146,12 @@ var nsetup = { // not anymore a clone of the original setup
     },
     setFlag: function (flag) {
         let UID = Math.random().toString(36).substring(7);
-        let flagName = flag ? flag : document.getElementById("flagSelect").value;
-        let flagContainer = document.getElementById("bantflags_container");
+        let flagName = flag ? flag : document.getElementById('flagSelect').value;
+        let flagContainer = document.getElementById('bantflags_container');
 
         flagContainer.appendChild(createAndAssign('img', {
             title: flagName,
-            src: back_end + flag_dir + flagName + ".png",
+            src: back_end + flag_dir + flagName + '.png',
             id: UID,
             className: 'bantflags_flag'
         }));
@@ -158,13 +161,11 @@ var nsetup = { // not anymore a clone of the original setup
         }
 
         document.getElementById(UID).addEventListener("click", function () {
-            console.log("removing flag");
             let flagToRemove = document.getElementById(UID);
 
             flagToRemove.parentNode.removeChild(flagToRemove);
             nsetup.toggleFlagButton('on');
             nsetup.save(nsetup.parse());
-            console.log("flag removed");
         });
 
         if (!flag) {
@@ -175,15 +176,22 @@ var nsetup = { // not anymore a clone of the original setup
     init: function () {
 
         // here we insert the form for placing flags. How?
-        let flagsForm = createAndAssign("div", {
+        let flagsForm = createAndAssign('div', {
             className: 'flagsForm',
             innerHTML: nsetup.form
         });
 
         addGlobalStyle('.flagsForm{float: right; clear: right; margin: 20px 10px;} #flagSelect{display:none;}');
-        addGlobalStyle(".bantflags_flag { padding: 1px;} [title^='Romania'] { position: relative; animation: shakeAnim 0.1s linear infinite;} @keyframes shakeAnim { 0% {left: 1px;} 25% {top: 2px;} 50% {left: 1px;} 75% {left: 0px;} 100% {left: 2px;}}");
+        addGlobalStyle('.bantflags_flag { padding: 1px;} [title^="Romania"] { position: relative; animation: shakeAnim 0.1s linear infinite;} @keyframes shakeAnim { 0% {left: 1px;} 25% {top: 2px;} 50% {left: 1px;} 75% {left: 0px;} 100% {left: 2px;}}');
 
-        firstChildInClass(document, 'bottomCtrl').parentNode.appendChild(flagsForm);
+        if (site.fourchan) {
+            document.getElementById('delform').appendChild(flagsForm);
+        }
+
+        // nineball and we're not in the index
+        if (site.nineball && document.querySelector('threads .pagination') === null) {
+            document.querySelector('threads section').append(flagsForm);
+        }
 
         for (var i in regions) {
             nsetup.setFlag(regions[i]);
@@ -196,7 +204,7 @@ var nsetup = { // not anymore a clone of the original setup
     },
     parse: function () {
         let flagsArray = [];
-        let flagElements = elementsInClass("bantflags_flag");
+        let flagElements = document.getElementsByClassName("bantflags_flag");
 
         for (var i = 0; i < flagElements.length; i++) {
             flagsArray[i] = flagElements[i].title;
@@ -212,68 +220,64 @@ regions = GM_getValue(nsetup.namespace); // TODO: move this to other init stuff
 if (!regions) {
     regions = [];
     setTimeout(function () {
-        window.confirm("Bant Flags: No Flags detected");
+        window.confirm('Bant Flags: No Flags detected');
     }, 2000);
 }
 
 /** parse the posts already on the page before thread updater kicks in */
 function parse4chanPosts() {
-    let posts = sliceCall(elementsInClass('postContainer'));
-
+    let posts = document.querySelectorAll('.postContainer');
     for (var i = 0; i < posts.length; i++) {
-        let postNumber = posts[i].id.replace("pc", "");
+        let postNumber = posts[i].id.replace('pc', ''); // Fuck you 4chan
         postNrs.push(postNumber);
     }
     debug(postNrs);
 }
 
-function parseFoolFuukaPosts() {
-    let nums = x => x.filter(x => x.id !== '').map(x => x.id);
-    let getPostNumbers = x => nums(sliceCall(elementsInClass(x)));
+function getposts(selector) {
+    let posts = document.querySelectorAll(selector);
 
-    postNrs = getPostNumbers('thread').concat(getPostNumbers('post'));
+    for (var i = 0; i < posts.length; i++) {
+        postNrs.push(posts[i].id);
+    }
     debug(postNrs);
 }
 
 function onFlagsLoad(response) {
-
-    // because we only care about the end result, not how we got there.
-    // grandparent -> first parent -> first child.
-    let hopHTML = (post_nr, first, second) =>
-        firstChildInClass(firstChildInClass(document.getElementById(post_nr), first), second);
-
     let MakeFlag = (flag) =>
         createAndAssign('a', {
-            innerHTML: "<img src=\"" + back_end + flag_dir + flag + ".png\" title=\"" + flag + "\">",
-            className: "bantFlag",
-            target: "_blank"
+            innerHTML: '<img src="' + back_end + flag_dir + flag + '.png" title="' + flag + '"> ',
+            className: 'bantFlag',
+            target: '_blank'
         });
 
-    debug("JSON: " + response.responseText);
+    debug('JSON: ' + response.responseText);
     var jsonData = JSON.parse(response.responseText);
 
     Object.keys(jsonData).forEach(function (post) {
-        let flagContainer = is_archive
-            ? hopHTML(post, "post_data", "post_type")
-            : hopHTML("pc" + post, "postInfo", "nameBlock");
-        let currentFlag = firstChildInClass(flagContainer, 'flag');
-        let flags = jsonData[post];
+        var flagContainer;
+        if (site.nineball) { flagContainer = document.querySelector('[id="' + post + '"] header'); }
+        if (site.fourchan) { flagContainer = document.querySelector('[id="pc' + post + '"] .postInfo  .nameBlock'); }
+        if (site.foolfuuka) { flagContainer = document.querySelector('[id="' + post + '"] .post_data .post_type'); }
 
-        // If we have a bantflag and the original post has a flag
-        if (flags.length > 0 && currentFlag !== undefined) {
-            console.log("[BantFlags] Resolving flags for >>" + post);
+        let flags = jsonData[post];
+        if (flags.length > 0) {
+            console.log('[BantFlags] Resolving flags for >>' + post);
 
             for (var i = 0; i < flags.length; i++) {
                 let flag = flags[i];
 
                 let newFlag = MakeFlag(flag);
-                if (is_archive) {
-                    newFlag.style = "padding: 0px 0px 0px " + (3 + 2 * (i > 0)) + "px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;";
+                if (site.foolfuuka) {
+                    newFlag.style = 'padding: 0px 0px 0px ' + (3 + 2 * (i > 0)) + 'px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;';
+                }
+                if (site.nineball) {
+                    newFlag.title = flag;
                 }
 
                 flagContainer.append(newFlag);
 
-                console.log("\t -> " + flag);
+                console.log('\t -> ' + flag);
             }
         }
     });
@@ -281,11 +285,13 @@ function onFlagsLoad(response) {
     postNrs = [];
 }
 
+/** Gets flags from the database. */
 function resolveRefFlags() {
+    debug('Board is: ' + board_id);
     MakeRequest(
-        "POST",
+        'POST',
         back_end + api_get,
-        "post_nrs=" + encodeURIComponent(postNrs) + "&board=" + encodeURIComponent(boardID) + "&version=" + encodeURIComponent(version),
+        'post_nrs=' + encodeURIComponent(postNrs) + '&board=' + encodeURIComponent(board_id) + '&version=' + encodeURIComponent(version),
         function (resp) {
             if (resp.status !== 200) {
                 retry(resolveRefFlags, resp);
@@ -297,26 +303,39 @@ function resolveRefFlags() {
 }
 
 // Flags need to be parsed and aligned differently between boards.
-if (is_archive) {
-    debug("FoolFuuka.");
-    parseFoolFuukaPosts();
-
-    addGlobalStyle('.bantFlag{top: -2px !important;left: -1px !important}');
-}
-else {
-    debug("4chan.");
+if (site.fourchan) {
+    debug('4chan');
+    board_id = 'bant';
     parse4chanPosts();
 
     addGlobalStyle('.flag{top: 0px !important;left: -1px !important}');
-    addGlobalStyle(".bantFlag {padding: 0px 0px 0px 5px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;}");
+    addGlobalStyle('.bantFlag {padding: 0px 0px 0px 5px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;}');
 }
 
-resolveRefFlags(); // Get flags from db.
+if (site.nineball) {
+    debug(regions);
+    debug('Nineball');
+    board_id = window.location.pathname.split('/')[1]; // 'nap' or 'srsbsn'
+    getposts('section[id], article[id]');
 
-if (!is_archive) {
+    addGlobalStyle('.bantFlag {cursor: default} .bantFlag img {pointer-events: none;}');
+}
+
+if (site.foolfuuka) { // Archive.
+    debug('FoolFuuka');
+    board_id = 'bant';
+    getposts('article[id]');
+
+    addGlobalStyle('.bantFlag{top: -2px !important;left: -1px !important}');
+}
+
+resolveRefFlags(); // Get flags from DB.
+
+// Posting new flags and getting flags as posts are added to the thread.
+if (site.fourchan) {
     let GetEvDetail = e => e.detail || e.wrappedJSObject.detail;
 
-    let method = "POST",
+    let method = 'POST',
         url = back_end + api_post,
         func = function (resp) {
             debug(resp.responseText);
@@ -332,7 +351,7 @@ if (!is_archive) {
 
         //setTimeout to support greasemonkey 1.x
         setTimeout(function () {
-            var data = "post_nr=" + encodeURIComponent(e.detail.postID) + "&board=" + encodeURIComponent(e.detail.boardID) + "&regions=" + encodeURIComponent(regions) + "&version=" + encodeURIComponent(version);
+            var data = 'post_nr=' + encodeURIComponent(e.detail.postID) + '&board=' + encodeURIComponent(e.detail.boardID) + '&regions=' + encodeURIComponent(regions) + '&version=' + encodeURIComponent(version);
             MakeRequest(method, url, data, func);
         }, 0);
     }, false);
@@ -343,7 +362,7 @@ if (!is_archive) {
 
         //setTimeout to support greasemonkey 1.x
         setTimeout(function () {
-            var data = "post_nr=" + encodeURIComponent(evDetail.postId) + "&board=" + encodeURIComponent(boardID) + "&regions=" + encodeURIComponent(regions) + "&version=" + encodeURIComponent(version);
+            var data = 'post_nr=' + encodeURIComponent(evDetail.postId) + '&board=' + encodeURIComponent(board_id) + '&regions=' + encodeURIComponent(regions) + '&version=' + encodeURIComponent(version);
             MakeRequest(method, url, data, func);
         }, 0);
     }, false);
@@ -380,7 +399,7 @@ if (!is_archive) {
 
         //add to temp posts and the DOM element to allPostsOnPage
         lastPosts.forEach(function (post_container) {
-            var post_nr = post_container.id.replace("pc", "");
+            var post_nr = post_container.id.replace('pc', '');
             postNrs.push(post_nr);
         });
 
@@ -389,4 +408,27 @@ if (!is_archive) {
     }, false);
     /** setup init and start first calls */
     nsetup.init();
+}
+
+if (site.nineball) {
+    nsetup.init();
+    new MutationObserver(function (mutations) {
+        mutations.forEach(function (mutation) {
+            if (mutation.addedNodes[0].nodeName == 'HEADER') { // When you make a post
+                let data = 'post_nr=' + encodeURIComponent(mutation.target.id) + '&board=' + encodeURIComponent(board_id) + '&regions=' + encodeURIComponent(regions) + '&version=' + encodeURIComponent(version);
+                MakeRequest(
+                    'POST',
+                    back_end + api_post,
+                    data,
+                    function (resp) {
+                        postNrs.push(mutation.target.id);
+                        setTimeout(resolveRefFlags, 0);
+                    });
+            }
+            if (mutation.addedNodes[0].nodeName == 'ARTICLE') { // When someone else makes a post
+                postNrs.push(mutation.addedNodes[0].id);
+                setTimeout(resolveRefFlags, 1500); // Wait 1.5s so the database can process the post, since they appear instantly.
+            }
+        });
+    }).observe(document.querySelector('threads'), { childList: true, subtree: true });
 }
