@@ -11,7 +11,7 @@
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     1.1.0
+// @version     1.1.1
 // @grant       GM_xmlhttpRequest
 // @grant       GM_getValue
 // @grant       GM_setValue
@@ -24,7 +24,7 @@
 // This script specifically targets ECMAScript 2015 (const, let, arrow functions). Update your hecking browser.
 
 // Change this if you want verbose debuging information in the console.
-const debugMode = false;
+const debugMode = true;
 
 //
 // DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE CONFIGURATION BOXES
@@ -287,7 +287,7 @@ function onFlagsLoad(response) {
 
 /** Gets flags from the database. */
 function resolveRefFlags() {
-    debug('Board is: ' + board_id);
+    debug('resolving flags for: ' + board_id);
     MakeRequest(
         'POST',
         back_end + api_get,
@@ -414,7 +414,13 @@ if (site.nineball) {
     nsetup.init();
     new MutationObserver(function (mutations) {
         mutations.forEach(function (mutation) {
-            if (mutation.addedNodes[0].nodeName == 'HEADER') { // When you make a post
+
+            // TODO: This is a hack and needs to be fixed ASAP
+            if (mutation.target.nodeName === 'THREADS') {
+                setTimeout(getposts('section[id], article[id]'), 2000);
+                resolveRefFlags();
+            }
+            if (mutation.addedNodes[0].nodeName === 'HEADER') { // When you make a post
                 let data = 'post_nr=' + encodeURIComponent(mutation.target.id) + '&board=' + encodeURIComponent(board_id) + '&regions=' + encodeURIComponent(regions) + '&version=' + encodeURIComponent(version);
                 MakeRequest(
                     'POST',
@@ -425,7 +431,7 @@ if (site.nineball) {
                         setTimeout(resolveRefFlags, 0);
                     });
             }
-            if (mutation.addedNodes[0].nodeName == 'ARTICLE') { // When someone else makes a post
+            if (mutation.addedNodes[0].nodeName === 'ARTICLE') { // When someone else makes a post
                 postNrs.push(mutation.addedNodes[0].id);
                 setTimeout(resolveRefFlags, 1500); // Wait 1.5s so the database can process the post, since they appear instantly.
             }
