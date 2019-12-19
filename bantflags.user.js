@@ -11,7 +11,7 @@
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     1.1.4
+// @version     1.1.5
 // @grant       GM_xmlhttpRequest
 // @grant       GM_getValue
 // @grant       GM_setValue
@@ -50,6 +50,8 @@ var regions = []; // The flags we have selected.
 var postNrs = []; // all post numbers in the thread.
 var board_id = ""; // The board we get flags for.
 
+// Test css paths to figure out what board software we're using.
+// 4chan is unique.
 const site = {
     yotsuba: window.location.host === 'boards.4chan.org',
     gogucaDoushio: document.querySelector('section article[id] header .control') !== null,
@@ -176,21 +178,16 @@ var nsetup = { // not anymore a clone of the original setup
     },
 
     init: function () {
-
-        // here we insert the form for placing flags. How?
         let flagsForm = createAndAssign('div', {
             className: 'flagsForm',
             innerHTML: nsetup.form
         });
 
-        addGlobalStyle('.flagsForm{float: right; clear: right; margin: 20px 10px;} #flagSelect{display:none;}');
-        addGlobalStyle('.bantflags_flag { padding: 1px;} [title^="Romania"] { position: relative; animation: shakeAnim 0.1s linear infinite;} @keyframes shakeAnim { 0% {left: 1px;} 25% {top: 2px;} 50% {left: 1px;} 75% {left: 0px;} 100% {left: 2px;}}');
-
         if (site.yotsuba) {
             document.getElementById('delform').appendChild(flagsForm);
         }
 
-        // nineball and we're not in the index
+        // If we're not in the index - only works for goguca.
         if (site.gogucaDoushio && document.querySelector('threads .pagination') === null) {
             document.querySelector('section').append(flagsForm);
         }
@@ -303,6 +300,9 @@ function resolveRefFlags() {
         }
     );
 }
+
+addGlobalStyle('.flagsForm{float: right; clear: right; margin: 20px 10px;} #flagSelect{display:none;}');
+addGlobalStyle('.bantflags_flag { padding: 1px;} [title^="Romania"] { position: relative; animation: shakeAnim 0.1s linear infinite;} @keyframes shakeAnim { 0% {left: 1px;} 25% {top: 2px;} 50% {left: 1px;} 75% {left: 0px;} 100% {left: 2px;}}');
 
 // Flags need to be parsed and aligned differently between boards.
 if (site.yotsuba) {
@@ -432,12 +432,12 @@ if (site.gogucaDoushio) {
                     'POST',
                     back_end + api_post,
                     data,
-                    function (resp) {
+                    function () {
                         postNrs.push(mutation.target.id);
                         resolveRefFlags();
                     });
             }
-            if (mutation.addedNodes[0].nodeName === 'ARTICLE') { // When someone else makes a post
+            if (mutation.target.nodeName !== body && mutation.addedNodes[0].nodeName === 'ARTICLE') { // If we're not hovering over a post and a post is added.
                 postNrs.push(mutation.addedNodes[0].id);
                 setTimeout(resolveRefFlags, 1500); // Wait 1.5s so the database can process the post, since they appear instantly.
             }

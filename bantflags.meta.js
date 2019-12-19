@@ -6,11 +6,12 @@
 // @include     http*://archive.nyafuu.org/bant/*
 // @include     http*://archived.moe/bant/*
 // @include     http*://thebarchive.com/bant/*
+// @include     http*://nineball.party/*
 // @exclude     http*://boards.4chan.org/bant/catalog
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     1.1.4
+// @version     1.1.5
 // @grant       GM_xmlhttpRequest
 // @grant       GM_getValue
 // @grant       GM_setValue
