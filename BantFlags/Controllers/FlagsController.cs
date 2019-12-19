@@ -57,7 +57,7 @@ namespace BantFlags.Controllers
         {
             string splitFlag = (version ?? 0) > 1 ? "," : "||"; // comma for v2+, else || for backwards compatibility.
 
-            Result<PostModel> post = PostModel.Create(post_nr, board, regions, splitFlag, Database.KnownFlags);
+            Result<PostModel> post = PostModel.Create(post_nr, board, regions, splitFlag, Database.KnownFlags, Database.Boards);
 
             if (post.Failed)
             {
@@ -66,7 +66,7 @@ namespace BantFlags.Controllers
 
             await Database.InsertPost(post.Value);
 
-            return Ok(post);
+            return Ok(post.Value);
         }
 
         /// <summary>

@@ -19,10 +19,9 @@ namespace BantFlags.Data
             Flags = flags;
         }
 
-        public static Result<PostModel> Create(string post_nr, string board, string regions, string splitFlag, HashSet<string> knownFlags)
+        public static Result<PostModel> Create(string post_nr, string board, string regions, string splitFlag, HashSet<string> knownFlags, HashSet<string> boards)
         {
             string[] empty = { "empty, or there were errors. Re-set your flags." };
-            string[] boards = { "bant", "nap", "srsbsn" }; // TODO: Move this to appsettings and make a singleton for it.
 
             if (!int.TryParse(post_nr, out int postNumber))
                 return Result<PostModel>.Fail("Invalid post number.");

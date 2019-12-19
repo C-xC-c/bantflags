@@ -16,9 +16,13 @@ namespace BantFlags.Data.Database
 
         public HashSet<string> KnownFlags { get; private set; }
 
+        public HashSet<string> Boards { get; private set; }
+
         public DatabaseService(DatabaseServiceConfig dbConfig)
         {
             ConnectionPool = new MySqlConnectionPool(dbConfig.ConnectionString, dbConfig.PoolSize);
+
+            Boards = dbConfig.Boards;
 
             UpdateKnownFlags().Wait(); // It's okay to deadlock here since it's only initialised at startup.
         }
@@ -101,5 +105,7 @@ namespace BantFlags.Data.Database
         public string ConnectionString { get; set; }
 
         public int PoolSize { get; set; }
+
+        public HashSet<string> Boards { get; set; }
     }
 }
