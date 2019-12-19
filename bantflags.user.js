@@ -11,7 +11,7 @@
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     1.1.5
+// @version     1.1.6
 // @grant       GM_xmlhttpRequest
 // @grant       GM_getValue
 // @grant       GM_setValue
@@ -183,12 +183,12 @@ var nsetup = { // not anymore a clone of the original setup
             innerHTML: nsetup.form
         });
 
+        // Where do we append the flagsForm to?
         if (site.yotsuba) {
             document.getElementById('delform').appendChild(flagsForm);
         }
 
-        // If we're not in the index - only works for goguca.
-        if (site.gogucaDoushio && document.querySelector('threads .pagination') === null) {
+        if (site.gogucaDoushio) {
             document.querySelector('section').append(flagsForm);
         }
 
@@ -267,9 +267,11 @@ function onFlagsLoad(response) {
                 let flag = flags[i];
 
                 let newFlag = MakeFlag(flag);
+
                 if (site.foolfuuka) {
                     newFlag.style = 'padding: 0px 0px 0px ' + (3 + 2 * (i > 0)) + 'px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;';
                 }
+
                 if (site.gogucaDoushio) {
                     newFlag.title = flag;
                 }
@@ -286,7 +288,7 @@ function onFlagsLoad(response) {
 
 /** Gets flags from the database. */
 function resolveRefFlags() {
-    debug('resolving flags for: ' + board_id);
+    debug('Board is: ' + board_id);
     MakeRequest(
         'POST',
         back_end + api_get,
@@ -315,7 +317,6 @@ if (site.yotsuba) {
 }
 
 if (site.gogucaDoushio) {
-    debug(regions);
     debug('Nineball');
     board_id = window.location.pathname.split('/')[1]; // 'nap' or 'srsbsn'
     getposts('section[id], article[id]');
@@ -422,10 +423,12 @@ if (site.gogucaDoushio) {
             // We should store posts + flags after they're generated once
             // and just reuse them instead of querying the server over and over
             if (mutation.target.nodeName === 'THREADS') {
+                board_id = window.location.pathname.split('/')[1]; // We might have moved from /nap/ to /srsbsn/.
                 setTimeout(getposts('section[id], article[id]'), 2000);
                 resolveRefFlags();
                 nsetup.init();
             }
+
             if (mutation.addedNodes[0].nodeName === 'HEADER') { // When you make a post
                 let data = 'post_nr=' + encodeURIComponent(mutation.target.id) + '&board=' + encodeURIComponent(board_id) + '&regions=' + encodeURIComponent(regions) + '&version=' + encodeURIComponent(version);
                 MakeRequest(
@@ -437,9 +440,10 @@ if (site.gogucaDoushio) {
                         resolveRefFlags();
                     });
             }
-            if (mutation.target.nodeName !== body && mutation.addedNodes[0].nodeName === 'ARTICLE') { // If we're not hovering over a post and a post is added.
+
+            if (mutation.target.nodeName !== body && mutation.addedNodes[0].nodeName === 'ARTICLE') { //If we're not hovering over a post and a post is added.
                 postNrs.push(mutation.addedNodes[0].id);
-                setTimeout(resolveRefFlags, 1500); // Wait 1.5s so the database can process the post, since they appear instantly.
+                setTimeout(resolveRefFlags, 1500); //Wait 1.5s so the database can process the post, since they appear instantly.
             }
         });
     }).observe(document.body, { childList: true, subtree: true });
