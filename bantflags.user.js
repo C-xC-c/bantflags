@@ -11,7 +11,7 @@
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     1.1.3
+// @version     1.1.4
 // @grant       GM_xmlhttpRequest
 // @grant       GM_getValue
 // @grant       GM_setValue
@@ -24,7 +24,7 @@
 // This script specifically targets ECMAScript 2015 (const, let, arrow functions). Update your hecking browser.
 
 // Change this if you want verbose debuging information in the console.
-const debugMode = true;
+const debugMode = false;
 
 //
 // DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE CONFIGURATION BOXES
@@ -47,12 +47,9 @@ var board_id = ""; // The board we get flags for.
 
 const site = {
     yotsuba: window.location.host === 'boards.4chan.org',
-    gogucaDoushio: document.querySelector('section article[id] header .control') !== null
-}
-
-// There are multiple foolfuuka archives we support; this has to be called after site is initialised as to not check each of them.
-// I.E. we'd have to go window.location.host === 'archive.nyafuu.org' || window.location.host === 'archived.moe'
-site.foolfuuka = !site.yotsuba && !site.gogucaDoushio;
+    gogucaDoushio: document.querySelector('section article[id] header .control') !== null,
+    foolfuuka: document.querySelector('div[id="main"] article header .post_data') !== null
+};
 
 //
 // DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE CONFIGURATION BOXES
