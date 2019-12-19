@@ -1,4 +1,8 @@
-﻿using BantFlags.Data;
+﻿// (C) Copyright 2019 C-xC-c <boku@plum.moe>
+// This file is part of BantFlags.
+// BantFlags is licensed under the GNU AGPL Version 3.0 or later.
+// see the LICENSE file or <https://www.gnu.org/licenses/>
+using BantFlags.Data;
 using BantFlags.Data.Database;
 using ImageMagick;
 using Microsoft.AspNetCore.Hosting;

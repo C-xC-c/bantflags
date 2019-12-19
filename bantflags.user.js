@@ -21,6 +21,11 @@
 // @downloadURL  https://flags.plum.moe/bantflags.user.js
 // ==/UserScript==
 
+// (C) Copyright 2019 C-xC-c <boku@plum.moe>
+// This file is part of BantFlags.
+// BantFlags is licensed under the GNU AGPL Version 3.0 or later.
+// see the LICENSE file or <https://www.gnu.org/licenses/>
+
 // This script specifically targets ECMAScript 2015 (const, let, arrow functions). Update your hecking browser.
 
 // Change this if you want verbose debuging information in the console.

@@ -1,9 +1,13 @@
-﻿@page
+﻿@* (C) Copyright 2019 C-xC-c <boku@plum.moe>
+   This file is part of BantFlags.
+   BantFlags is licensed under the GNU AGPL Version 3.0 or later.
+   see the LICENSE file or <https: //www.gnu.org/licenses/agpl-3.0.en.html /> *@
+@page
 @using BantFlags.Data
 @model BantFlags.UploadModel
 @{
-    ViewData["Title"] = "Upload";
-    Layout = "~/Pages/Shared/_Layout.cshtml";
+ViewData["Title"] = "Upload";
+Layout = "~/Pages/Shared/_Layout.cshtml";
 }
 
 <h1>Upload</h1>
@@ -22,9 +26,9 @@
 <form method="post">
     <select name="flag">
         @foreach (string s in Model.StagedFlags.Names)
-        {
-            <option>@s</option>
-        }
+    {
+        <option>@s</option>
+    }
     </select>
     <input type="text" name="newName" />
     <br />
@@ -44,61 +48,61 @@
 
 @if (Model.StagedFlags.Flags.Any())
 {
-    <h2>Pending Changes</h2>
-    <form method="post" asp-page-handler="Unstage">
-        <input type="text" name="password" />
-        <br />
-        <br />
-        <button type="submit">Remove from staging</button>
-        <h3>Deleted Flags</h3>
-        @for (int i = 0; i < Model.StagedFlags.Flags.Count(); i++)
+<h2>Pending Changes</h2>
+<form method="post" asp-page-handler="Unstage">
+    <input type="text" name="password" />
+    <br />
+    <br />
+    <button type="submit">Remove from staging</button>
+    <h3>Deleted Flags</h3>
+    @for (int i = 0; i < Model.StagedFlags.Flags.Count(); i++)
+    {
+        if (Model.StagedFlags.Flags[i].FlagMethod == Method.Delete)
         {
-            if (Model.StagedFlags.Flags[i].FlagMethod == Method.Delete)
-            {
-                <div class="flag">
+    <div class="flag">
 
-                    <label>@(Model.StagedFlags.Flags[i].Name)</label>
-                    <img src="~/flags/@(Model.StagedFlags.Flags[i].Name).png" />
-                    <input type="hidden" name="flags[@i].Name" value="@Model.StagedFlags.Flags[i].Name" />
-                    <input type="hidden" name="flags[@i].FlagMethod" value="@Model.StagedFlags.Flags[i].FlagMethod" />
-                    <input type="checkbox" name="flags[@i].IsChecked" value="true" />
-                </div>
-            }
-
+        <label>@(Model.StagedFlags.Flags[i].Name)</label>
+        <img src="~/flags/@(Model.StagedFlags.Flags[i].Name).png" />
+        <input type="hidden" name="flags[@i].Name" value="@Model.StagedFlags.Flags[i].Name" />
+        <input type="hidden" name="flags[@i].FlagMethod" value="@Model.StagedFlags.Flags[i].FlagMethod" />
+        <input type="checkbox" name="flags[@i].IsChecked" value="true" />
+    </div>
         }
 
-        <h3>Renamed Flags</h3>
-        @for (int i = 0; i < Model.StagedFlags.Flags.Count(); i++)
-        {
-            if (Model.StagedFlags.Flags[i].FlagMethod == Method.Rename)
-            {
-                <div class="flag">
-                    <label>@(Model.StagedFlags.Flags[i].Name)</label>
-                    <img src="~/flags/@(Model.StagedFlags.Flags[i].OldName).png" />
-                    <input type="hidden" name="flags[@i].Name" value="@Model.StagedFlags.Flags[i].Name" />
-                    <input type="hidden" name="flags[@i].FlagMethod" value="@Model.StagedFlags.Flags[i].FlagMethod" />
-                    <input type="checkbox" name="flags[@i].IsChecked" value="true" />
-                </div>
-            }
+    }
 
+    <h3>Renamed Flags</h3>
+    @for (int i = 0; i < Model.StagedFlags.Flags.Count(); i++)
+    {
+        if (Model.StagedFlags.Flags[i].FlagMethod == Method.Rename)
+        {
+    <div class="flag">
+        <label>@(Model.StagedFlags.Flags[i].Name)</label>
+        <img src="~/flags/@(Model.StagedFlags.Flags[i].OldName).png" />
+        <input type="hidden" name="flags[@i].Name" value="@Model.StagedFlags.Flags[i].Name" />
+        <input type="hidden" name="flags[@i].FlagMethod" value="@Model.StagedFlags.Flags[i].FlagMethod" />
+        <input type="checkbox" name="flags[@i].IsChecked" value="true" />
+    </div>
         }
 
-        <h3>Added Flags</h3>
-        @for (int i = 0; i < Model.StagedFlags.Flags.Count(); i++)
-        {
-            if (Model.StagedFlags.Flags[i].FlagMethod == Method.Add)
-            {
-                <div class="flag">
-                    <label>@(Model.StagedFlags.Flags[i].Name)</label>
-                    <img src="~/flags/staging/@(Model.StagedFlags.Flags[i].Name).png" />
-                    <input type="hidden" name="flags[@i].Name" value="@Model.StagedFlags.Flags[i].Name" />
-                    <input type="hidden" name="flags[@i].FlagMethod" value="@Model.StagedFlags.Flags[i].FlagMethod" />
-                    <input type="checkbox" name="flags[@i].IsChecked" value="true" />
-                </div>
-            }
+    }
 
+    <h3>Added Flags</h3>
+    @for (int i = 0; i < Model.StagedFlags.Flags.Count(); i++)
+    {
+        if (Model.StagedFlags.Flags[i].FlagMethod == Method.Add)
+        {
+    <div class="flag">
+        <label>@(Model.StagedFlags.Flags[i].Name)</label>
+        <img src="~/flags/staging/@(Model.StagedFlags.Flags[i].Name).png" />
+        <input type="hidden" name="flags[@i].Name" value="@Model.StagedFlags.Flags[i].Name" />
+        <input type="hidden" name="flags[@i].FlagMethod" value="@Model.StagedFlags.Flags[i].FlagMethod" />
+        <input type="checkbox" name="flags[@i].IsChecked" value="true" />
+    </div>
         }
-    </form>
+
+    }
+</form>
 }
 
 @section Head {
