@@ -11,7 +11,7 @@
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     1.1.2
+// @version     1.1.3
 // @grant       GM_xmlhttpRequest
 // @grant       GM_getValue
 // @grant       GM_setValue
@@ -46,13 +46,13 @@ var postNrs = []; // all post numbers in the thread.
 var board_id = ""; // The board we get flags for.
 
 const site = {
-    fourchan: window.location.host === 'boards.4chan.org',
-    nineball: window.location.host === 'nineball.party'
-};
+    yotsuba: window.location.host === 'boards.4chan.org',
+    gogucaDoushio: document.querySelector('section article[id] header .control') !== null
+}
 
 // There are multiple foolfuuka archives we support; this has to be called after site is initialised as to not check each of them.
 // I.E. we'd have to go window.location.host === 'archive.nyafuu.org' || window.location.host === 'archived.moe'
-site.foolfuuka = !site.fourchan && !site.nineball;
+site.foolfuuka = !site.yotsuba && !site.gogucaDoushio;
 
 //
 // DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE CONFIGURATION BOXES
@@ -184,13 +184,13 @@ var nsetup = { // not anymore a clone of the original setup
         addGlobalStyle('.flagsForm{float: right; clear: right; margin: 20px 10px;} #flagSelect{display:none;}');
         addGlobalStyle('.bantflags_flag { padding: 1px;} [title^="Romania"] { position: relative; animation: shakeAnim 0.1s linear infinite;} @keyframes shakeAnim { 0% {left: 1px;} 25% {top: 2px;} 50% {left: 1px;} 75% {left: 0px;} 100% {left: 2px;}}');
 
-        if (site.fourchan) {
+        if (site.yotsuba) {
             document.getElementById('delform').appendChild(flagsForm);
         }
 
         // nineball and we're not in the index
-        if (site.nineball && document.querySelector('threads .pagination') === null) {
-            document.querySelector('threads section').append(flagsForm);
+        if (site.gogucaDoushio && document.querySelector('threads .pagination') === null) {
+            document.querySelector('section').append(flagsForm);
         }
 
         for (var i in regions) {
@@ -256,8 +256,8 @@ function onFlagsLoad(response) {
 
     Object.keys(jsonData).forEach(function (post) {
         var flagContainer;
-        if (site.nineball) { flagContainer = document.querySelector('[id="' + post + '"] header'); }
-        if (site.fourchan) { flagContainer = document.querySelector('[id="pc' + post + '"] .postInfo  .nameBlock'); }
+        if (site.gogucaDoushio) { flagContainer = document.querySelector('[id="' + post + '"] header'); }
+        if (site.yotsuba) { flagContainer = document.querySelector('[id="pc' + post + '"] .postInfo  .nameBlock'); }
         if (site.foolfuuka) { flagContainer = document.querySelector('[id="' + post + '"] .post_data .post_type'); }
 
         let flags = jsonData[post];
@@ -271,7 +271,7 @@ function onFlagsLoad(response) {
                 if (site.foolfuuka) {
                     newFlag.style = 'padding: 0px 0px 0px ' + (3 + 2 * (i > 0)) + 'px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;';
                 }
-                if (site.nineball) {
+                if (site.gogucaDoushio) {
                     newFlag.title = flag;
                 }
 
@@ -303,7 +303,7 @@ function resolveRefFlags() {
 }
 
 // Flags need to be parsed and aligned differently between boards.
-if (site.fourchan) {
+if (site.yotsuba) {
     debug('4chan');
     board_id = 'bant';
     parse4chanPosts();
@@ -312,7 +312,7 @@ if (site.fourchan) {
     addGlobalStyle('.bantFlag {padding: 0px 0px 0px 5px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;}');
 }
 
-if (site.nineball) {
+if (site.gogucaDoushio) {
     debug(regions);
     debug('Nineball');
     board_id = window.location.pathname.split('/')[1]; // 'nap' or 'srsbsn'
@@ -332,7 +332,7 @@ if (site.foolfuuka) { // Archive.
 resolveRefFlags(); // Get flags from DB.
 
 // Posting new flags and getting flags as posts are added to the thread.
-if (site.fourchan) {
+if (site.yotsuba) {
     let GetEvDetail = e => e.detail || e.wrappedJSObject.detail;
 
     let method = 'POST',
@@ -410,13 +410,15 @@ if (site.fourchan) {
     nsetup.init();
 }
 
-if (site.nineball) {
+if (site.gogucaDoushio) {
     nsetup.init();
 
     new MutationObserver(function (mutations) {
         mutations.forEach(function (mutation) {
 
             // TODO: This is a hack and needs to be fixed ASAP
+            // We should store posts + flags after they're generated once
+            // and just reuse them instead of querying the server over and over
             if (mutation.target.nodeName === 'THREADS') {
                 setTimeout(getposts('section[id], article[id]'), 2000);
                 resolveRefFlags();
@@ -438,5 +440,5 @@ if (site.nineball) {
                 setTimeout(resolveRefFlags, 1500); // Wait 1.5s so the database can process the post, since they appear instantly.
             }
         });
-    }).observe(document.querySelector('threads'), { childList: true, subtree: true });
+    }).observe(document.body, { childList: true, subtree: true });
 }
