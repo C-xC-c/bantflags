@@ -11,7 +11,7 @@
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     1.1.6
+// @version     1.2.0
 // @grant       GM_xmlhttpRequest
 // @grant       GM_getValue
 // @grant       GM_setValue
@@ -50,9 +50,8 @@ var regions = []; // The flags we have selected.
 var postNrs = []; // all post numbers in the thread.
 var board_id = ""; // The board we get flags for.
 
-// Test css paths to figure out what board software we're using.
-// 4chan is unique.
-const site = {
+// Test unqiue CSS paths to figure out what board software we're using.
+const software = {
     yotsuba: window.location.host === 'boards.4chan.org',
     gogucaDoushio: document.querySelector('section article[id] header .control') !== null,
     foolfuuka: document.querySelector('div[id="main"] article header .post_data') !== null
@@ -164,10 +163,8 @@ var nsetup = { // not anymore a clone of the original setup
             nsetup.toggleFlagButton('off');
         }
 
-        document.getElementById(UID).addEventListener("click", function () {
-            let flagToRemove = document.getElementById(UID);
-
-            flagToRemove.parentNode.removeChild(flagToRemove);
+        document.getElementById(UID).addEventListener("click", function (e) {
+            flagContainer.removeChild(e.target);
             nsetup.toggleFlagButton('on');
             nsetup.save(nsetup.parse());
         });
@@ -184,13 +181,8 @@ var nsetup = { // not anymore a clone of the original setup
         });
 
         // Where do we append the flagsForm to?
-        if (site.yotsuba) {
-            document.getElementById('delform').appendChild(flagsForm);
-        }
-
-        if (site.gogucaDoushio) {
-            document.querySelector('section').append(flagsForm);
-        }
+        if (software.yotsuba) { document.getElementById('delform').appendChild(flagsForm); }
+        if (software.gogucaDoushio) { document.querySelector('section').append(flagsForm); }
 
         for (var i in regions) {
             nsetup.setFlag(regions[i]);
@@ -237,6 +229,9 @@ function getposts(selector) {
     let posts = document.querySelectorAll(selector);
 
     for (var i = 0; i < posts.length; i++) {
+        let postNumber = software.yotsuba
+            ? posts[i].id.replace('pc', '') // Fuck you 4chan.
+            : posts[i].id;
         postNrs.push(posts[i].id);
     }
     debug(postNrs);
@@ -254,10 +249,12 @@ function onFlagsLoad(response) {
     var jsonData = JSON.parse(response.responseText);
 
     Object.keys(jsonData).forEach(function (post) {
+
+        // Here we get the header of the post using a different CSS selector depending on the board.
         var flagContainer;
-        if (site.gogucaDoushio) { flagContainer = document.querySelector('[id="' + post + '"] header'); }
-        if (site.yotsuba) { flagContainer = document.querySelector('[id="pc' + post + '"] .postInfo  .nameBlock'); }
-        if (site.foolfuuka) { flagContainer = document.querySelector('[id="' + post + '"] .post_data .post_type'); }
+        if (software.gogucaDoushio) { flagContainer = document.querySelector('[id="' + post + '"] header'); }
+        if (software.yotsuba) { flagContainer = document.querySelector('[id="pc' + post + '"] .postInfo  .nameBlock'); }
+        if (software.foolfuuka) { flagContainer = document.querySelector('[id="' + post + '"] .post_data .post_type'); }
 
         let flags = jsonData[post];
         if (flags.length > 0) {
@@ -268,11 +265,11 @@ function onFlagsLoad(response) {
 
                 let newFlag = MakeFlag(flag);
 
-                if (site.foolfuuka) {
+                if (software.foolfuuka) {
                     newFlag.style = 'padding: 0px 0px 0px ' + (3 + 2 * (i > 0)) + 'px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;';
                 }
 
-                if (site.gogucaDoushio) {
+                if (software.gogucaDoushio) {
                     newFlag.title = flag;
                 }
 
@@ -306,17 +303,16 @@ function resolveRefFlags() {
 addGlobalStyle('.flagsForm{float: right; clear: right; margin: 20px 10px;} #flagSelect{display:none;}');
 addGlobalStyle('.bantflags_flag { padding: 1px;} [title^="Romania"] { position: relative; animation: shakeAnim 0.1s linear infinite;} @keyframes shakeAnim { 0% {left: 1px;} 25% {top: 2px;} 50% {left: 1px;} 75% {left: 0px;} 100% {left: 2px;}}');
 
-// Flags need to be parsed and aligned differently between boards.
-if (site.yotsuba) {
+// Flags need to be parsed differently and have different styles depending on board software.
+if (software.yotsuba) {
     debug('4chan');
     board_id = 'bant';
     parse4chanPosts();
 
-    addGlobalStyle('.flag{top: 0px !important;left: -1px !important}');
-    addGlobalStyle('.bantFlag {padding: 0px 0px 0px 5px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;}');
+    addGlobalStyle('.bantFlag {padding: 0px 0px 0px 5px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;} .flag{top: 0px !important;left: -1px !important}');
 }
 
-if (site.gogucaDoushio) {
+if (software.gogucaDoushio) {
     debug('Nineball');
     board_id = window.location.pathname.split('/')[1]; // 'nap' or 'srsbsn'
     getposts('section[id], article[id]');
@@ -324,7 +320,7 @@ if (site.gogucaDoushio) {
     addGlobalStyle('.bantFlag {cursor: default} .bantFlag img {pointer-events: none;}');
 }
 
-if (site.foolfuuka) { // Archive.
+if (software.foolfuuka) { // Archive.
     debug('FoolFuuka');
     board_id = 'bant';
     getposts('article[id]');
@@ -335,7 +331,7 @@ if (site.foolfuuka) { // Archive.
 resolveRefFlags(); // Get flags from DB.
 
 // Posting new flags and getting flags as posts are added to the thread.
-if (site.yotsuba) {
+if (software.yotsuba) {
     let GetEvDetail = e => e.detail || e.wrappedJSObject.detail;
 
     let method = 'POST',
@@ -344,30 +340,16 @@ if (site.yotsuba) {
             debug(resp.responseText);
         };
 
-    // TODO: most of this can be rewritten. Do we care to support GM 1.x when we're using ES6?
-    /** send flag to system on 4chan x (v2, loadletter, v3 untested) post
-     *  handy comment to save by ccd0
-     *  console.log(e.detail.boardID);  // board name    (string)
-     *  console.log(e.detail.threadID); // thread number (integer in ccd0, string in loadletter)
-     *  console.log(e.detail.postID);   // post number   (integer in ccd0, string in loadletter) */
     document.addEventListener('QRPostSuccessful', function (e) {
-
-        //setTimeout to support greasemonkey 1.x
-        setTimeout(function () {
-            var data = 'post_nr=' + encodeURIComponent(e.detail.postID) + '&board=' + encodeURIComponent(e.detail.boardID) + '&regions=' + encodeURIComponent(regions) + '&version=' + encodeURIComponent(version);
-            MakeRequest(method, url, data, func);
-        }, 0);
+        var data = 'post_nr=' + encodeURIComponent(e.detail.postID) + '&board=' + encodeURIComponent(e.detail.boardID) + '&regions=' + encodeURIComponent(regions) + '&version=' + encodeURIComponent(version);
+        MakeRequest(method, url, data, func);
     }, false);
 
     /** send flag to system on 4chan inline post */
     document.addEventListener('4chanQRPostSuccess', function (e) {
         var evDetail = GetEvDetail(e);
-
-        //setTimeout to support greasemonkey 1.x
-        setTimeout(function () {
-            var data = 'post_nr=' + encodeURIComponent(evDetail.postId) + '&board=' + encodeURIComponent(board_id) + '&regions=' + encodeURIComponent(regions) + '&version=' + encodeURIComponent(version);
-            MakeRequest(method, url, data, func);
-        }, 0);
+        var data = 'post_nr=' + encodeURIComponent(evDetail.postId) + '&board=' + encodeURIComponent(board_id) + '&regions=' + encodeURIComponent(regions) + '&version=' + encodeURIComponent(version);
+        MakeRequest(method, url, data, func);
     }, false);
 
     /** Listen to post updates from the thread updater for 4chan x v2 (loadletter) and v3 (ccd0 + ?) */
@@ -380,17 +362,12 @@ if (site.yotsuba) {
             return;
         }
 
-        setTimeout(function () {
+        evDetailClone.newPosts.forEach(function (post_board_nr) {
+            var post_nr = post_board_nr.split('.')[1];
+            postNrs.push(post_nr);
+        });
 
-            //add to temp posts and the DOM element to allPostsOnPage
-            evDetailClone.newPosts.forEach(function (post_board_nr) {
-                var post_nr = post_board_nr.split('.')[1];
-                postNrs.push(post_nr);
-            });
-        }, 0);
-
-        //setTimeout to support greasemonkey 1.x
-        setTimeout(resolveRefFlags, 0);
+        resolveRefFlags();
     }, false);
 
     /** Listen to post updates from the thread updater for inline extension */
@@ -406,44 +383,45 @@ if (site.yotsuba) {
             postNrs.push(post_nr);
         });
 
-        //setTimeout to support greasemonkey 1.x
-        setTimeout(resolveRefFlags, 0);
+        resolveRefFlags();
     }, false);
-    /** setup init and start first calls */
+
     nsetup.init();
 }
 
-if (site.gogucaDoushio) {
+if (software.gogucaDoushio) {
     nsetup.init();
 
+    // There are some setTimeouts here since posts can appear faster than the Db can process them.
     new MutationObserver(function (mutations) {
         mutations.forEach(function (mutation) {
+            if (mutation.addedNodes.length > 0) { // A post was added.
+                if (mutation.target.nodeName === 'THREADS') {
+                    board_id = window.location.pathname.split('/')[1]; // We might have moved from /nap/ to /srsbsn/.
+                    setTimeout(getposts('section[id], article[id]'), 2000);
+                    resolveRefFlags();
+                    nsetup.init();
+                }
 
-            // TODO: This is a hack and needs to be fixed ASAP
-            // We should store posts + flags after they're generated once
-            // and just reuse them instead of querying the server over and over
-            if (mutation.target.nodeName === 'THREADS') {
-                board_id = window.location.pathname.split('/')[1]; // We might have moved from /nap/ to /srsbsn/.
-                setTimeout(getposts('section[id], article[id]'), 2000);
-                resolveRefFlags();
-                nsetup.init();
-            }
+                var addedNode = mutation.addedNodes[0].nodeName;
+                if (addedNode === 'HEADER') { // When you post.
+                    let data = 'post_nr=' + encodeURIComponent(mutation.target.id) + '&board=' + encodeURIComponent(board_id) + '&regions=' + encodeURIComponent(regions) + '&version=' + encodeURIComponent(version);
+                    MakeRequest(
+                        'POST',
+                        back_end + api_post,
+                        data,
+                        function () {
+                            postNrs.push(mutation.target.id);
+                            resolveRefFlags();
+                        });
+                }
 
-            if (mutation.addedNodes[0].nodeName === 'HEADER') { // When you make a post
-                let data = 'post_nr=' + encodeURIComponent(mutation.target.id) + '&board=' + encodeURIComponent(board_id) + '&regions=' + encodeURIComponent(regions) + '&version=' + encodeURIComponent(version);
-                MakeRequest(
-                    'POST',
-                    back_end + api_post,
-                    data,
-                    function () {
-                        postNrs.push(mutation.target.id);
-                        resolveRefFlags();
-                    });
-            }
-
-            if (mutation.target.nodeName !== body && mutation.addedNodes[0].nodeName === 'ARTICLE') { //If we're not hovering over a post and a post is added.
-                postNrs.push(mutation.addedNodes[0].id);
-                setTimeout(resolveRefFlags, 1500); //Wait 1.5s so the database can process the post, since they appear instantly.
+                // Someone else posts. Also checks to see if you're hovering over a quote.
+                // This might not work for Doushio.
+                if (addedNode === 'ARTICLE' && mutation.target.nodeName !== "BODY" && mutation.target.id !== 'hover_overlay') {
+                    postNrs.push(mutation.addedNodes[0].id);
+                    setTimeout(resolveRefFlags, 1500);
+                }
             }
         });
     }).observe(document.body, { childList: true, subtree: true });
