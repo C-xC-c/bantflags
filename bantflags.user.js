@@ -11,7 +11,7 @@
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     1.2.0
+// @version     1.2.1
 // @grant       GM_xmlhttpRequest
 // @grant       GM_getValue
 // @grant       GM_setValue
@@ -32,7 +32,7 @@
 const debugMode = false;
 
 //
-// DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE CONFIGURATION BOXES
+// DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE FLAG SELECT
 //
 const postRemoveCounter = 60;
 const requestRetryInterval = 5000; // TODO: maybe a max retries counter as well?
@@ -53,12 +53,12 @@ var board_id = ""; // The board we get flags for.
 // Test unqiue CSS paths to figure out what board software we're using.
 const software = {
     yotsuba: window.location.host === 'boards.4chan.org',
-    gogucaDoushio: document.querySelector('section article[id] header .control') !== null,
+    nodegucaDoushio: document.querySelector('b[id="sync"], span[id="sync"]') !== null,
     foolfuuka: document.querySelector('div[id="main"] article header .post_data') !== null
 };
 
 //
-// DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE CONFIGURATION BOXES
+// DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE FLAG SELECT
 //
 const sliceCall = x => Array.prototype.slice.call(x);
 const createAndAssign = (element, source) => Object.assign(document.createElement(element), source);
@@ -182,7 +182,7 @@ var nsetup = { // not anymore a clone of the original setup
 
         // Where do we append the flagsForm to?
         if (software.yotsuba) { document.getElementById('delform').appendChild(flagsForm); }
-        if (software.gogucaDoushio) { document.querySelector('section').append(flagsForm); }
+        if (software.nodegucaDoushio) { document.querySelector('section').append(flagsForm); }
 
         for (var i in regions) {
             nsetup.setFlag(regions[i]);
@@ -215,24 +215,14 @@ if (!regions) {
     }, 2000);
 }
 
-/** parse the posts already on the page before thread updater kicks in */
-function parse4chanPosts() {
-    let posts = document.querySelectorAll('.postContainer');
-    for (var i = 0; i < posts.length; i++) {
-        let postNumber = posts[i].id.replace('pc', ''); // Fuck you 4chan
-        postNrs.push(postNumber);
-    }
-    debug(postNrs);
-}
-
-function getposts(selector) {
+function getPosts(selector) {
     let posts = document.querySelectorAll(selector);
 
     for (var i = 0; i < posts.length; i++) {
         let postNumber = software.yotsuba
             ? posts[i].id.replace('pc', '') // Fuck you 4chan.
             : posts[i].id;
-        postNrs.push(posts[i].id);
+        postNrs.push(postNumber);
     }
     debug(postNrs);
 }
@@ -252,7 +242,7 @@ function onFlagsLoad(response) {
 
         // Here we get the header of the post using a different CSS selector depending on the board.
         var flagContainer;
-        if (software.gogucaDoushio) { flagContainer = document.querySelector('[id="' + post + '"] header'); }
+        if (software.nodegucaDoushio) { flagContainer = document.querySelector('[id="' + post + '"] header'); }
         if (software.yotsuba) { flagContainer = document.querySelector('[id="pc' + post + '"] .postInfo  .nameBlock'); }
         if (software.foolfuuka) { flagContainer = document.querySelector('[id="' + post + '"] .post_data .post_type'); }
 
@@ -269,7 +259,7 @@ function onFlagsLoad(response) {
                     newFlag.style = 'padding: 0px 0px 0px ' + (3 + 2 * (i > 0)) + 'px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;';
                 }
 
-                if (software.gogucaDoushio) {
+                if (software.nodegucaDoushio) {
                     newFlag.title = flag;
                 }
 
@@ -307,28 +297,28 @@ addGlobalStyle('.bantflags_flag { padding: 1px;} [title^="Romania"] { position: 
 if (software.yotsuba) {
     debug('4chan');
     board_id = 'bant';
-    parse4chanPosts();
+    getPosts('.postContainer');
 
     addGlobalStyle('.bantFlag {padding: 0px 0px 0px 5px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;} .flag{top: 0px !important;left: -1px !important}');
 }
 
-if (software.gogucaDoushio) {
+if (software.nodegucaDoushio) {
     debug('Nineball');
     board_id = window.location.pathname.split('/')[1]; // 'nap' or 'srsbsn'
-    getposts('section[id], article[id]');
+    getPosts('section[id], article[id]');
 
     addGlobalStyle('.bantFlag {cursor: default} .bantFlag img {pointer-events: none;}');
 }
 
-if (software.foolfuuka) { // Archive.
+if (software.foolfuuka) {
     debug('FoolFuuka');
     board_id = 'bant';
-    getposts('article[id]');
+    getPosts('article[id]');
 
     addGlobalStyle('.bantFlag{top: -2px !important;left: -1px !important}');
 }
 
-resolveRefFlags(); // Get flags from DB.
+resolveRefFlags(); // Get flags from DB then add them to posts.
 
 // Posting new flags and getting flags as posts are added to the thread.
 if (software.yotsuba) {
@@ -389,22 +379,25 @@ if (software.yotsuba) {
     nsetup.init();
 }
 
-if (software.gogucaDoushio) {
+if (software.nodegucaDoushio) {
     nsetup.init();
 
-    // There are some setTimeouts here since posts can appear faster than the Db can process them.
+    // This is poking at the mutations made on the page to figure out what happened and thus what actions to take.
+    // There is full support for nodeguca but I don't have a Doushio board I feel comfortable spamming to ensure it works properly there. There is at least partial support.
     new MutationObserver(function (mutations) {
         mutations.forEach(function (mutation) {
             if (mutation.addedNodes.length > 0) { // A post was added.
-                if (mutation.target.nodeName === 'THREADS') {
-                    board_id = window.location.pathname.split('/')[1]; // We might have moved from /nap/ to /srsbsn/.
-                    setTimeout(getposts('section[id], article[id]'), 2000);
+                var firstAddedNode = mutation.addedNodes[0].nodeName;
+
+                // Enter a thread or change boards.
+                if (mutation.target.nodeName === 'THREADS' && firstAddedNode !== 'HR' && firstAddedNode !== 'SECTION') {
+                    board_id = window.location.pathname.split('/')[1];
+                    setTimeout(getPosts('section[id], article[id]'), 2000);
                     resolveRefFlags();
                     nsetup.init();
                 }
 
-                var addedNode = mutation.addedNodes[0].nodeName;
-                if (addedNode === 'HEADER') { // When you post.
+                if (firstAddedNode === 'HEADER') { // You post.
                     let data = 'post_nr=' + encodeURIComponent(mutation.target.id) + '&board=' + encodeURIComponent(board_id) + '&regions=' + encodeURIComponent(regions) + '&version=' + encodeURIComponent(version);
                     MakeRequest(
                         'POST',
@@ -416,9 +409,8 @@ if (software.gogucaDoushio) {
                         });
                 }
 
-                // Someone else posts. Also checks to see if you're hovering over a quote.
-                // This might not work for Doushio.
-                if (addedNode === 'ARTICLE' && mutation.target.nodeName !== "BODY" && mutation.target.id !== 'hover_overlay') {
+                // Someone else posts.
+                if (firstAddedNode === 'ARTICLE' && mutation.target.nodeName !== "BODY" && mutation.target.id !== 'hover_overlay') {
                     postNrs.push(mutation.addedNodes[0].id);
                     setTimeout(resolveRefFlags, 1500);
                 }
