@@ -11,12 +11,12 @@
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     1.3.0
+// @version     1.4.0
 // @grant       GM_xmlhttpRequest
 // @grant       GM_getValue
 // @grant       GM_setValue
 // @run-at      document-idle
-// @icon        https://nineball.party/files/flags/actual_flags/0077.png
+// @icon        https://flags.plum.moe/flags/0077.png
 // @updateURL    https://flags.plum.moe/bantflags.meta.js
 // @downloadURL  https://flags.plum.moe/bantflags.user.js
 // ==/UserScript==
@@ -91,7 +91,7 @@ function debug(text) {
 /** Wrapper around GM_xmlhttpRequest.
  * @param {string} method - The HTTP method (GET, POST).
  * @param {string} url - The URL of the request.
- * @param {string} data - Data sent inn the form body.
+ * @param {string} data - text for the form body.
  * @param {Function} func - The function run when we recieve a response. Response data is sent directly to it. */
 const MakeRequest = ((method, url, data, func) => {
   GM_xmlhttpRequest({
@@ -116,7 +116,7 @@ function retry(func, resp) {
 var nsetup = { // not anymore a clone of the original setup
   namespace: 'BintFlegs', // TODO: should be const.
   flagsLoaded: false,
-  form: '<span id="bantflags_container"></span><button type="button" id="append_flag_button" title="Click to add selected flag to your flags. Click on flags to remove them. Saving happens automatically, you only need to refresh the pages that have an outdated flaglist on the page."><<</button><button id="flagLoad" type="button">Click to load flags.</button><select id="flagSelect"></select>',
+  form: '<span id="bantflags_container"></span><button type="button" id="append_flag_button" title="Click to add selected flag to your flags. Click on flags to remove them. Saving happens automatically, you only need to refresh the pages that have an outdated flaglist on the page."><<</button><button id="flagLoad" type="button">Click to load flags.</button><div id="flagSelect" ><ul class="hide"></ul><input type="button" value="(You)" onclick=""></div>',
   fillHtml: function () { // TODO: this function should have a better name. Only called by nsetup.init, can be inlined?
     MakeRequest(
       "GET",
@@ -130,18 +130,27 @@ var nsetup = { // not anymore a clone of the original setup
         }
 
         let flagSelect = document.getElementById('flagSelect');
-        let flagLoad = document.getElementById('flagLoad');
+        let flagList = flagSelect.querySelector('ul');
+        let flagInput = flagSelect.querySelector('input');
         let flags = resp.responseText.split('\n');
 
         for (var i = 0; i < flags.length; i++) {
           let flag = flags[i];
-          flagSelect.appendChild(createAndAssign('option', {
-            value: flag,
-            innerHTML: '<img src="' + back_end + flag_dir + flag + '.png" title="' + flag + '"> ' + flag
+          flagList.appendChild(createAndAssign('li', {
+            innerHTML: '<img src="' + back_end + flag_dir + flag + '.png" title="' + flag + '"> <span>' + flag + '</span>'
           }));
         }
 
-        flagLoad.style.display = 'none';
+        flagSelect.addEventListener('click', (e) => {
+          listItem = e.target.nodeName === 'LI' ? e.target : e.target.parentNode;
+          if (listItem.nodeName === 'LI') {
+            flagInput.value = listItem.querySelector('span').innerHTML;
+          }
+          flagList.classList.toggle('hide');
+        });
+
+        document.getElementById('flagLoad').style.display = 'none';
+        document.querySelector('.flagsForm').style.marginRight = "200px"; // Element has position: absolute and is ~200px long.
         flagSelect.style.display = 'inline-block';
         nsetup.flagsLoaded = true;
       });
@@ -159,7 +168,7 @@ var nsetup = { // not anymore a clone of the original setup
   },
   setFlag: function (flag) {
     let UID = Math.random().toString(36).substring(7);
-    let flagName = flag ? flag : document.getElementById('flagSelect').value;
+    let flagName = flag ? flag : document.querySelector('#flagSelect input').value;
     let flagContainer = document.getElementById('bantflags_container');
 
     flagContainer.appendChild(createAndAssign('img', {
@@ -281,14 +290,15 @@ function resolveRefFlags() {
   );
 }
 
+// This should only happen before you set flags for the first time.
 regions = GM_getValue(nsetup.namespace);
 if (!regions) {
   regions = [];
   window.confirm('[BantFlags]: No Flags detected.');
 }
 
-// TODO: look at this CSS and see what's important / where we can merge some of it.
-addGlobalStyle('.flagsForm{float: right; clear: right; margin: 20px 10px;} #flagSelect{display:none;} .bantflags_flag{padding: 1px;} [title^="Romania"]{ position: relative; animation: shakeAnim 0.1s linear infinite;} @keyframes shakeAnim{ 0% {left: 1px;} 25% {top: 2px;} 50% {left: 1px;} 75% {left: 0px;} 100% {left: 2px;}}');
+// See Docs/styles.css
+addGlobalStyle('.flagsForm{float: right; clear: right; margin: 20px 10px;} #flagSelect{display:none;} .bantflags_flag{padding: 1px;} [title^="Romania"]{ position: relative; animation: shakeAnim 0.1s linear infinite;} @keyframes shakeAnim{ 0% {left: 1px;} 25% {top: 2px;} 50% {left: 1px;} 75% {left: 0px;} 100% {left: 2px;}} #flagSelect ul {list-style-type: none;padding: 0;margin-bottom: 0;cursor: pointer;bottom: 100%;height: 200px;overflow: auto;position: absolute;width:200px;background-color:#fff}#flagSelect ul li {display: block;}#flagSelect ul li:hover {background-color: #ddd;}#flagSelect {position: absolute;}#flagSelect input {width: 200px;} #flagSelect .hide {display: none;}#flagSelect img {margin-left: 2px;}');
 
 // We get flags using different selectors, and we need to align them differently.
 if (software.yotsuba) {

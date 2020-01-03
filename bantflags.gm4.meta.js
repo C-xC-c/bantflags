@@ -11,12 +11,12 @@
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     1.3.0
+// @version     1.4.0
 // @grant       GM.xmlHttpRequest
 // @grant       GM.getValue
 // @grant       GM.setValue
 // @run-at      document-idle
-// @icon        https://nineball.party/files/flags/actual_flags/0077.png
+// @icon        https://flags.plum.moe/flags/0077.png
 // @updateURL    https://flags.plum.moe/bantflags.gm4.meta.js
 // @downloadURL  https://flags.plum.moe/bantflags.gm4.user.js
 // ==/UserScript==
