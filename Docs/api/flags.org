@@ -1,0 +1,4 @@
+* /api/flags
+returns a plaintext list of all the resolved flags, seperated by
+newline characters (\n). This is maintained by the database service
+and updated whenever changes are committed to the flag console.
