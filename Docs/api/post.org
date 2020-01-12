@@ -1,0 +1,18 @@
+* /api/post
+** Recieved Data
+Data is sent from the script to the backend after a post has been
+made, containing the post number, =post_nr=, =board= identifier, and
+selected flags, =regions=. Modern versions of the script also encode a
+=version= which is used when splitting =regions= into individual flags
+
+Data looks like this:
+#+BEGIN_SRC http :pretty
+  POST https://flags/plum.moe/api/post
+  Content-Type: application/x-www-form-urlencoded
+
+  post_nr=12345&board=bant&regions=Patchouli,dount,VIP&version=1
+#+END_SRC
+** Sent Data
+The backend returns either a JSON object of the post, as it would be
+returned by =/api/get=, or an error message specific to the issue if
+the form data is invalid.
