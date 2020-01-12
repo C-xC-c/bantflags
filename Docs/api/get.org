@@ -1,19 +1,32 @@
 * /api/get
+** Recieved Data
+All versions of the script send a comma seperated list of post
+numbers, =post_nrs= and a board =board=. Modern versions of bantflags
+also send a version number, =version=, which decides how the returned
+data will be formatted.
 
-** Database Query
+Data looks like this:
+#+BEGIN_SRC http
+  POST https://flags.plum.moe/api/get
+  Content-Type: application/x-www-form-urlencoded
+  
+  post_nrs=12345,12346,14444&board=bant&version=1
+#+END_SRC
+** Sent Data 
+*** GetPosts
 Returns an =IEnumerable<IGrouping<int, DataRow>>= of post numbers and
-their flags where the post numbers are contained in the input.
-
-** Compatibility
-*** V1
+their flags where the post numbers are contained in
+=post_nrs=. =board= limits the query to only the board we're currently
+on.
+*** GetPosts_V1
 Minimum script version: 0
 
 Flags are converted from an =IEnumerable<IGrouping<int, DataRow>>= to
 a =List<Dictionary<string, string>>= by joining the values in the
-=DataRow= by "||". These are then split by the same seperator and
-converted into an array on the script's end.
+=DataRow= by "||", which are then split and converted into an array by
+the script.
 
-We're doing needless conversions at both ends which slows the whole 
+We're doing a needless conversion at both ends which slows the whole
 process down, but it's how extraflags is set up and we need to support
 it.
 
@@ -31,13 +44,13 @@ Data looks like this:
   ]
 #+END_SRC
 
-*** V2
+*** getPosts_V2
 Minimum script version: 2
 
 Flags are converted from an =IEnumerable<IGrouping<int, DataRow>>= to
-a =Dictionary<int, IEnumerable<string>>= which are parsed by the 
-userscript without any conversion. This format is the same as returned
-from the database query, sans extra information contained in a
+a =Dictionary<int, IEnumerable<string>>= which can then be parsed by
+the script without any conversion. This format is the same as returned
+from the database query, sans the extra information returned by a
 =DataRow=
 
 Data looks like this:
