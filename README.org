@@ -10,10 +10,10 @@ the backend . A user's flags are stored between pages using
 =GM_setValue= and =GM_getValue=.
 
 Old versions of GreaseMonkey will be able to recieve updates to the
-script through use of the =@updateURL= and =@downloadURL= directives,
-though these were depricated sometime in GreaseMonkey 3.x and updates
-are only checked from the location the script was downloaded from so
-be careful where you upload links.
+script through the =@updateURL= and =@downloadURL= directives, though
+these were depricated sometime in GreaseMonkey 3.x and updates are
+only checked from the location the script was downloaded from so be
+careful where you upload links.
 
 On self hosting, changing =back_end= to your domain /should/ be all
 you need to do, but don't take this as fact.
@@ -39,42 +39,60 @@ declarations. Update your hecking browser.
 - Magick.NET-Q8-AnyCPU
 
 *** Setup
-1. Install .NET Core 
-2. Clone and build the BantFlags solution.
-3. Create the database using [[https://github.com/C-xC-c/BantFlags/blob/master/Environment/database.sql][database.sql]].
-   + *Change the password*.
-4. configure =BantFlags/appsettings.example.json= with your connection
-   string and webroot (where you'll serve the flags from *without a 
-   trailing /*) and rename it to =appsettings.json=
-   + The location of the BantFlags application and the served content
-     are not necessarly the same. If you leave it empty, or provide a
-     nonexistant path the application will look for the =wwwroot=
-     folder inside the working directory.
-     + For example, you may place =BantFlags.dll= and
-       =appsettings.json= in =/etc/bantflags/= and point =webroot= at
-       =/var/www/html= and bantflags will server static content from
-       that directory, or leave =webroot= empty and bantflags will look
-       for static content in =/etc/bantflags/wwwroot=
-5. Create a folder called =keys= in the directory you will be hosting
-   bantflags from.
-   + E.G. =/etc/bantflags/keys/=
-   + ASP.NET Core uses some cryptic bullshit anti forgery token when
-     processing HTML forms, and it's unable to persistantly store the
-     decryption keys in memory on GNU + Linux. This directory will
-     store said keys when you or users upload flags to /upload. The
-     path is hardcoded to =AppDomain.CurrentDomain.BaseDirectory=,
-     I.E. wherever the program is.
-6. Add flags to the backend either by querying the database directly 
-   and placing images *with the same name* in ={webroot}/flags/= or
-   by using /upload.
-7. Configure your webserver of choice to forward requests to kestral
-   + [[https://github.com/C-xC-c/BantFlags/blob/master/Environment/nginx.conf][Example nginx config.]]
-8. Run with =dotnet BantFlags.dll= or create a service to run it as a
+1) [[https://dotnet.microsoft.com/download/dotnet-core][Install .NET Core]] 
+2) Clone and build the BantFlags solution.
+3) Create the database using [[https://github.com/C-xC-c/BantFlags/blob/master/Environment/database.sql][database.sql]].
+   - *Change the password*.
+4) configure =BantFlags/appsettings.example.json= with your connection
+   string and webroot (where you'll serve the flags from *without a
+   trailing slash*) and rename it to =appsettings.json=
+   - See below for an example appsettings.json.
+   - ASP.NET Core applications look for a folder called =wwwroot= in
+     the same directory as the application for static files. However
+     you can choose to logically seperate these by providing a vaild
+     directory to =webroot=.
+     - That is to say, if the bantflags application is in
+       =/var/www/bantflags/BantFlags.dll=, the program will look for
+       the folder =/var/www/bantflags/wwwroot/= to host static content,
+       or whatever directory is provided to =wwwroot=.
+5) If you're hosting on your GNU/Linux distribution of choice, Create a
+   folder called =keys= in the same directory as the bantflags
+   executable.
+   - E.G. =/var/www/bantflags/keys/=
+     - This is because ASP.NET Core uses some cryptic bullshit anti
+       forgery token when processing HTML forms, and it's unable to
+       persistantly store the decryption keys in memory on
+       GNU/Linux. This directory will store said keys when you or
+       users upload flags to /upload. The path uses
+       =AppDomain.CurrentDomain.BaseDirectory= internally,
+       I.E. wherever the program is.
+6) Add flags to the backend by uploading them to the flag console (/Upload).
+   - Flags must be 16x11 pixels and under 15kb. Their names must not
+     exceed 100 characters and cannot contain either "||" or ",".
+7) Configure your webserver of choice to forward requests to kestral
+   - [[https://github.com/C-xC-c/BantFlags/blob/master/Environment/nginx.conf][Example nginx config.]]
+8) Run with =dotnet BantFlags.dll= or create a service to run it as a
    daemon.
-   + [[https://github.com/C-xC-c/BantFlags/blob/master/Environment/bantflags.service][Example systemd service.]]
-9. ???
-10. profit.
+   - [[https://github.com/C-xC-c/BantFlags/blob/master/Environment/bantflags.service][Example systemd service.]]
+9) ???
+10) profit.
 
+**** Example appsettings.json
+#+BEGIN_SRC javascript
+  {
+    "dbconfig": {
+      "connectionstring": "Server=localhost;Port=3306;User ID=user;Password=password;Database=bantflags",
+      "poolsize": 2,
+      "boards": [
+        "bant",
+        "nap",
+        "srsbsn"
+      ]
+    },
+    "webroot": "/var/www/html",
+    "staging-password": "supersecretpassword"
+  }
+#+END_SRC
 *** Database
 Tables look like this:
 
@@ -94,8 +112,10 @@ Tables look like this:
 where post_nr and flag in *postflags* are the id fields in their
 respective tables.
 *** API
-The backend exposes three endpoints used by the userscript to get and
-post flags, and a flags directory storing the images themselves.
+The backend exposes three endpoints for the userscript to get and post
+flags. Flags themselves are hosted from the =flags/= directory. This
+will be whatever value you gave to =webroot= (or
+=/path/to/bantflags/wwwroot/= if no value is provided) + =flags/=.
 
 | route      | purpse                                     |
 |------------+--------------------------------------------|
@@ -105,8 +125,8 @@ post flags, and a flags directory storing the images themselves.
 | /flags/*   | The flag images                            |
 
 ** Backwards Compatibility
-The API is 1:1 compatable with all previous versions of bantflags, but
-also encodes a new =version= variable when getting flags which allows
-for breaking changes in the script while the backend only sends data
-it knows is parsable. See [[https://github.com/C-xC-c/BantFlags/tree/master/Docs/][Docs/{endpoint}]]
-for version compatibility.
+The API is 1:1 compatable with all previous versions of
+bantflags. Further improvements are achieved by encoding a =version=
+variable when poking endpoints which allows for breaking changes in
+the script and backend while guaranteeing data can be parsed on both
+ends. See [[https://github.com/C-xC-c/BantFlags/tree/master/Docs/][Docs/{endpoint}]] for changes and compatibility.
