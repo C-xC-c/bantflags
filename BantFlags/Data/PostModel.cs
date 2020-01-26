@@ -2,7 +2,6 @@
 // This file is part of BantFlags.
 // BantFlags is licensed under the GNU AGPL Version 3.0 or later.
 // see the LICENSE file or <https://www.gnu.org/licenses/>
-using System;
 using System.Collections.Generic;
 using System.Linq;
 

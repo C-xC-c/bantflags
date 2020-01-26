@@ -13,7 +13,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using System.IO;
-using System.Runtime.InteropServices;
 
 namespace BantFlags
 {
@@ -29,17 +28,18 @@ namespace BantFlags
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers().AddNewtonsoftJson();
+            services.AddControllers().AddNewtonsoftJson(); // So we can format complex datatypes into JSON
 
             services.AddRazorPages();
 
-            // TODO: this shouldn't just be for Linux.
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) // For image upload during production.
+            if (!Directory.Exists(Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "keys/")))
             {
-                services.AddDataProtection()
-                    .SetApplicationName("BantFlags")
-                    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "keys")));
+                Directory.CreateDirectory(Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "keys/"));
             }
+
+            services.AddDataProtection()
+                .SetApplicationName("BantFlags")
+                .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "keys")));
 
             services.AddSingleton(new DatabaseService(Configuration.GetSection("dbconfig").Get<DatabaseServiceConfig>()));
             services.AddSingleton(new Staging(Configuration.GetValue<string>("staging-password")));

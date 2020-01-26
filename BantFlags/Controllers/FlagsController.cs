@@ -38,7 +38,7 @@ namespace BantFlags.Controllers
 
             if (ver > 1)
             {
-                // Improved data structuring, see Docs/GetPosts
+                // Improved data structuring, see Docs/get
                 return Json(await Database.GetPosts_V2(post_nrs, board));
             }
 

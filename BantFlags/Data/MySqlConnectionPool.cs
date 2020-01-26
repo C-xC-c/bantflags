@@ -39,7 +39,6 @@ namespace BantFlags.Data
         {
             return new PoolObject<MySqlConnection>(await Connections.TakeAsync(), obj =>
             {
-                // TODO: Why can't I use EnsureConnectionIsOpen() here?
                 if (obj.State != ConnectionState.Open)
                 {
                     obj.Open();

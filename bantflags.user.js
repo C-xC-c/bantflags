@@ -11,7 +11,7 @@
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     1.4.0
+// @version     1.4.1
 // @grant       GM_xmlhttpRequest
 // @grant       GM_getValue
 // @grant       GM_setValue
@@ -40,21 +40,21 @@ if (typeof GM_setValue === 'undefined') {
 //
 // DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE FLAG SELECT
 //
-const postRemoveCounter = 60;
-const requestRetryInterval = 5000; // TODO: maybe a max retries counter as well?
 const version = 2; // Breaking changes.
 const back_end = 'https://flags.plum.moe/';
 const api_flags = 'api/flags';
 const flag_dir = 'flags/';
 const api_get = 'api/get';
 const api_post = 'api/post';
+const namespace = 'BintFlegs';
 
 // If you increase this the server will ignore your post.
 const max_flags = 30;
 
-var regions = []; // The flags we have selected.
-var postNrs = []; // all post numbers in the thread.
-var board_id = ""; // The board we get flags for.
+let regions = []; // The flags we have selected.
+let postNrs = []; // all post numbers in the thread.
+let board_id = ""; // The board we get flags for.
+let flagsLoaded = false;
 //
 // DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE FLAG SELECT
 //
@@ -71,6 +71,8 @@ const software = {
  * @param {object} source - The properties to assign to the element. 
  * @returns {object} The HTML tag created */
 const createAndAssign = (element, source) => Object.assign(document.createElement(element), source);
+
+const toggleFlagButton = state => document.getElementById('append_flag_button').disabled = state === 'off' ? true : false;
 
 /** Add a stylesheet to the head of the document.
  * @param {string} css - The CSS rules for the stylesheet. 
@@ -93,7 +95,7 @@ function debug(text) {
  * @param {string} url - The URL of the request.
  * @param {string} data - text for the form body.
  * @param {Function} func - The function run when we recieve a response. Response data is sent directly to it. */
-const MakeRequest = ((method, url, data, func) => {
+const makeRequest = ((method, url, data, func) => {
   GM_xmlhttpRequest({
     method: method,
     url: url,
@@ -103,116 +105,106 @@ const MakeRequest = ((method, url, data, func) => {
   });
 });
 
-/** Try some MakeRequest again if it fails.
-* @param {function} func - The function to retry.
-* @param {XMLHttpRequest} resp  - The XMLHttpResponse from the failed request.*/
-function retry(func, resp) {
-  console.log('[BantFlags] Could not fetch flags, status: ' + resp.status);
-  console.log(resp.statusText);
-  setTimeout(func, requestRetryInterval);
+/** Itterate over selected flags are store them across browser sessions.*/
+function saveFlags() {
+  regions = [];
+  let selectedFlags = document.getElementsByClassName("bantflags_flag");
+
+  for (var i = 0; i < selectedFlags.length; i++) {
+    regions[i] = selectedFlags[i].title;
+  }
+
+  GM_setValue(namespace, regions);
 }
 
-// TODO: this shouldn't be a object.
-var nsetup = { // not anymore a clone of the original setup
-  namespace: 'BintFlegs', // TODO: should be const.
-  flagsLoaded: false,
-  form: '<span id="bantflags_container"></span><button type="button" id="append_flag_button" title="Click to add selected flag to your flags. Click on flags to remove them. Saving happens automatically, you only need to refresh the pages that have an outdated flaglist on the page."><<</button><button id="flagLoad" type="button">Click to load flags.</button><div id="flagSelect" ><ul class="hide"></ul><input type="button" value="(You)" onclick=""></div>',
-  fillHtml: function () { // TODO: this function should have a better name. Only called by nsetup.init, can be inlined?
-    MakeRequest(
-      "GET",
-      back_end + api_flags,
-      "version=" + encodeURIComponent(version),
-      function (resp) {
-        debug('Loading flags.');
-        if (resp.status !== 200) {
-          retry(nsetup.fillHtml, resp);
-          return;
+/** Add a flag to our selection.
+ * @param {string} flag - The flag to add to our selection. If no value is passed it takes the current value from the flagSelect. */
+function setFlag(flag) {
+  let UID = Math.random().toString(36).substring(7);
+  let flagName = flag ? flag : document.querySelector('#flagSelect input').value;
+  let flagContainer = document.getElementById('bantflags_container');
+
+  flagContainer.appendChild(createAndAssign('img', {
+    title: flagName,
+    src: back_end + flag_dir + flagName + '.png',
+    id: UID,
+    className: 'bantflags_flag'
+  }));
+
+  if (flagContainer.children.length >= max_flags) {
+    toggleFlagButton('off');
+  }
+
+  document.getElementById(UID).addEventListener("click", (e) => {
+    flagContainer.removeChild(e.target);
+    toggleFlagButton('on');
+    saveFlags();
+  });
+
+  if (!flag) { // When we add a flag to our selection, save it for when we reload the page.
+    saveFlags();
+  }
+}
+
+/** Create flag button and initialise our selected flags */
+function init() {
+  let flagsForm = createAndAssign('div', {
+    className: 'flagsForm',
+    innerHTML: '<span id="bantflags_container"></span><button type="button" id="append_flag_button" title="Click to add selected flag to your flags. Click on flags to remove them. Saving happens automatically, you only need to refresh the pages that have an outdated flaglist on the page."><<</button><button id="flagLoad" type="button">Click to load flags.</button><div id="flagSelect" ><ul class="hide"></ul><input type="button" value="(You)" onclick=""></div>'
+  });
+
+  // Where do we append the flagsForm to?
+  if (software.yotsuba) { document.getElementById('delform').appendChild(flagsForm); }
+  if (software.nodegucaDoushio) { document.querySelector('section').append(flagsForm); } // As posts are added the flagForm moves up the page. Could we append this after .section?
+
+  for (var i in regions) {
+    setFlag(regions[i]);
+  }
+
+  document.getElementById('append_flag_button').addEventListener('click',
+    () => flagsLoaded ? setFlag() : alert('Load flags before adding them.'));
+
+  document.getElementById('flagLoad').addEventListener('click', makeFlagSelect, { once: true });
+}
+
+/** Get flag data from server and fill flags form. */
+function makeFlagSelect() {
+  makeRequest(
+    "GET",
+    back_end + api_flags,
+    "version=" + encodeURIComponent(version),
+    function (resp) {
+      debug('Loading flags.');
+      if (resp.status !== 200) {
+        return;
+      }
+
+      let flagSelect = document.getElementById('flagSelect');
+      let flagList = flagSelect.querySelector('ul');
+      let flagInput = flagSelect.querySelector('input');
+      let flags = resp.responseText.split('\n');
+
+      for (var i = 0; i < flags.length; i++) {
+        let flag = flags[i];
+        flagList.appendChild(createAndAssign('li', {
+          innerHTML: '<img src="' + back_end + flag_dir + flag + '.png" title="' + flag + '"> <span>' + flag + '</span>'
+        }));
+      }
+
+      flagSelect.addEventListener('click', (e) => {
+        listItem = e.target.nodeName === 'LI' ? e.target : e.target.parentNode; // So we can click the flag image and still select the flag.
+        if (listItem.nodeName === 'LI') {
+          flagInput.value = listItem.querySelector('span').innerHTML;
         }
-
-        let flagSelect = document.getElementById('flagSelect');
-        let flagList = flagSelect.querySelector('ul');
-        let flagInput = flagSelect.querySelector('input');
-        let flags = resp.responseText.split('\n');
-
-        for (var i = 0; i < flags.length; i++) {
-          let flag = flags[i];
-          flagList.appendChild(createAndAssign('li', {
-            innerHTML: '<img src="' + back_end + flag_dir + flag + '.png" title="' + flag + '"> <span>' + flag + '</span>'
-          }));
-        }
-
-        flagSelect.addEventListener('click', (e) => {
-          listItem = e.target.nodeName === 'LI' ? e.target : e.target.parentNode;
-          if (listItem.nodeName === 'LI') {
-            flagInput.value = listItem.querySelector('span').innerHTML;
-          }
-          flagList.classList.toggle('hide');
-        });
-
-        document.getElementById('flagLoad').style.display = 'none';
-        document.querySelector('.flagsForm').style.marginRight = "200px"; // Element has position: absolute and is ~200px long.
-        flagSelect.style.display = 'inline-block';
-        nsetup.flagsLoaded = true;
+        flagList.classList.toggle('hide');
       });
-  },
-  save: function () {
-    let storedFlags = [];
-    let selectedFlags = document.getElementsByClassName("bantflags_flag");
 
-    for (var i = 0; i < selectedFlags.length; i++) {
-      storedFlags[i] = selectedFlags[i].title;
-    }
-
-    GM_setValue(nsetup.namespace, storedFlags);
-    regions = GM_getValue(nsetup.namespace); // TODO: this could be selectedFlags? GM_getValue is expensive.
-  },
-  setFlag: function (flag) {
-    let UID = Math.random().toString(36).substring(7);
-    let flagName = flag ? flag : document.querySelector('#flagSelect input').value;
-    let flagContainer = document.getElementById('bantflags_container');
-
-    flagContainer.appendChild(createAndAssign('img', {
-      title: flagName,
-      src: back_end + flag_dir + flagName + '.png',
-      id: UID,
-      className: 'bantflags_flag'
-    }));
-
-    if (flagContainer.children.length >= max_flags) {
-      nsetup.toggleFlagButton('off');
-    }
-
-    document.getElementById(UID).addEventListener("click", (e) => {
-      flagContainer.removeChild(e.target);
-      nsetup.toggleFlagButton('on');
-      nsetup.save();
+      document.getElementById('flagLoad').style.display = 'none';
+      document.querySelector('.flagsForm').style.marginRight = "200px"; // Element has position: absolute and is ~200px long.
+      flagSelect.style.display = 'inline-block';
+      flagsLoaded = true;
     });
-
-    if (!flag) { // When we add a flag to our selection, save it for when we reload the page.
-      nsetup.save();
-    }
-  },
-  init: function () {
-    let flagsForm = createAndAssign('div', {
-      className: 'flagsForm',
-      innerHTML: nsetup.form
-    });
-
-    // Where do we append the flagsForm to?
-    if (software.yotsuba) { document.getElementById('delform').appendChild(flagsForm); }
-    if (software.nodegucaDoushio) { document.querySelector('section').append(flagsForm); } // As posts are added the flagForm moves up the page. Could we append this after .section?
-
-    for (var i in regions) {
-      nsetup.setFlag(regions[i]);
-    }
-
-    document.getElementById('append_flag_button').addEventListener('click',
-      () => nsetup.flagsLoaded ? nsetup.setFlag() : alert('Load flags before adding them.'));
-
-    document.getElementById('flagLoad').addEventListener('click', nsetup.fillHtml, { once: true });
-  },
-  toggleFlagButton: state => document.getElementById('append_flag_button').disabled = state === 'off' ? true : false
-};
+}
 
 /** add all of thhe post numbers on the page to postNrs.
  * @param {string} selector - The CSS selector who's id is the post number. */
@@ -230,7 +222,7 @@ function getPosts(selector) {
 
 /** Take the response from resolveRefFlags and append flags to their respective post numbers.
  * @param {XMLHttpRequest} response - The response data from resolveRefFlags. */
-function onFlagsLoad(response) {
+function loadFlags(response) {
   debug('JSON: ' + response.responseText);
   var jsonData = JSON.parse(response.responseText);
 
@@ -274,27 +266,26 @@ function onFlagsLoad(response) {
 }
 
 /** Get flags from the database using values in postNrs and pass the response on to onFlagsLoad */
-function resolveRefFlags() {
+function resolveFlags() {
   debug('Board is: ' + board_id);
-  MakeRequest(
+  makeRequest(
     'POST',
     back_end + api_get,
     'post_nrs=' + encodeURIComponent(postNrs) + '&board=' + encodeURIComponent(board_id) + '&version=' + encodeURIComponent(version),
     function (resp) {
       if (resp.status !== 200) {
-        retry(resolveRefFlags, resp);
+        console.log('[bantflags] Couldn\'t load flags. Refresh the page.');
         return;
       }
-      onFlagsLoad(resp);
+      loadFlags(resp);
     }
   );
 }
 
-// This should only happen before you set flags for the first time.
-regions = GM_getValue(nsetup.namespace);
-if (!regions) {
+regions = GM_getValue(namespace);
+if (!regions) { // Should only be called before you set flags for the first time.
   regions = [];
-  window.confirm('[BantFlags]: No Flags detected.');
+  window.confirm('[BantFlags]: No Flags detected.\nIf this is your first time running bantflags, look for the "Click to load flags." button at the bottom right of the thread, then select your flag and press the ">>" button.');
 }
 
 // See Docs/styles.css
@@ -307,14 +298,16 @@ if (software.yotsuba) {
   getPosts('.postContainer');
 
   addGlobalStyle('.bantFlag {padding: 0px 0px 0px 5px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;} .flag{top: 0px !important;left: -1px !important}');
+  init();
 }
 
 if (software.nodegucaDoushio) {
   debug('Nineball');
-  board_id = window.location.pathname.split('/')[1]; // 'nap' or 'srsbsn'
+  board_id = window.location.pathname.split('/')[1];
   getPosts('section[id], article[id]');
 
   addGlobalStyle('.bantFlag {cursor: default} .bantFlag img {pointer-events: none;}');
+  init();
 }
 
 if (software.foolfuuka) {
@@ -325,12 +318,12 @@ if (software.foolfuuka) {
   addGlobalStyle('.bantFlag{top: -2px !important;left: -1px !important}');
 }
 
-resolveRefFlags();
+resolveFlags();
 
 if (software.yotsuba) {
   const GetEvDetail = e => e.detail || e.wrappedJSObject.detail;
 
-  const postFlags = post_nr => MakeRequest(
+  const postFlags = post_nr => makeRequest(
     'POST',
     back_end + api_post,
     'post_nr=' + encodeURIComponent(post_nr) + '&board=' + encodeURIComponent(board_id) + '&regions=' + encodeURIComponent(regions) + '&version=' + encodeURIComponent(version),
@@ -355,7 +348,7 @@ if (software.yotsuba) {
       postNrs.push(post_nr);
     });
 
-    resolveRefFlags();
+    resolveFlags();
   }, false);
 
   document.addEventListener('4chanThreadUpdated', function (e) {
@@ -369,15 +362,11 @@ if (software.yotsuba) {
       postNrs.push(post_nr);
     });
 
-    resolveRefFlags();
+    resolveFlags();
   }, false);
-
-  nsetup.init();
 }
 
 if (software.nodegucaDoushio) {
-  nsetup.init();
-
   // This is poking at the mutations made on the page to figure out what happened and thus what actions to take.
   // There is full support for nodeguca but I don't have a Doushio board I feel comfortable spamming to ensure it works properly there. There is at least partial support.
   new MutationObserver(function (mutations) {
@@ -389,27 +378,27 @@ if (software.nodegucaDoushio) {
         if (mutation.target.nodeName === 'THREADS' && firstAddedNode !== 'HR' && firstAddedNode !== 'SECTION') {
           board_id = window.location.pathname.split('/')[1];
           setTimeout(getPosts('section[id], article[id]'), 2000);
-          resolveRefFlags();
-          nsetup.init();
+          resolveFlags();
+          init();
         }
 
         // You post.
         if (firstAddedNode === 'HEADER') {
           let data = 'post_nr=' + encodeURIComponent(mutation.target.id) + '&board=' + encodeURIComponent(board_id) + '&regions=' + encodeURIComponent(regions) + '&version=' + encodeURIComponent(version);
-          MakeRequest(
+          makeRequest(
             'POST',
             back_end + api_post,
             data,
             function () {
               postNrs.push(mutation.target.id);
-              resolveRefFlags();
+              resolveFlags();
             });
         }
 
         // Someone else posts. Checks to see if you're hovering over a post.
         if (firstAddedNode === 'ARTICLE' && mutation.target.nodeName !== "BODY" && mutation.target.id !== 'hover_overlay') {
           postNrs.push(mutation.addedNodes[0].id);
-          setTimeout(resolveRefFlags, 1500);
+          setTimeout(resolveFlags, 1500);
         }
       }
     });
