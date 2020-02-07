@@ -11,10 +11,13 @@
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     1.4.2
+// @version     1.5.0
 // @grant       GM_xmlhttpRequest
 // @grant       GM_getValue
 // @grant       GM_setValue
+// @grant       GM.setValue
+// @grant       GM.getValue
+// @grant       GM.xmlHttpRequest
 // @run-at      document-idle
 // @icon        https://flags.plum.moe/flags/0077.png
 // @updateURL    https://flags.plum.moe/bantflags.meta.js
@@ -29,13 +32,10 @@
 // Change this if you want verbose debuging information in the console.
 const debugMode = false;
 
-// For idiots using GM4. Does anyone else not support GM_ functions?
-if (typeof GM_setValue === 'undefined') {
-  if (window.confirm('[BantFlags] Couldn\' find required userscript functions. If you\'re using GreaseMonkey 4, press \'ok\' to be redirected to the correct version of bantflags.')) {
-    window.location.href = "https://flags.plum.moe/bantflags.gm4.user.js"; // Should I use thhis or window.location.replace?
-  }
-  return;
-}
+const isGM4 = typeof GM_setValue === 'undefined';
+const setValue = isGM4 ? GM.setValue : GM_setValue;
+const getValue = isGM4 ? GM.getValue : GM_getValue;
+const xmlHttpRequest = isGM4 ? GM.xmlHttpRequest : GM_xmlhttpRequest;
 
 //
 // DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE FLAG SELECT
@@ -96,7 +96,7 @@ function debug(text) {
  * @param {string} data - text for the form body.
  * @param {Function} func - The function run when we recieve a response. Response data is sent directly to it. */
 const makeRequest = ((method, url, data, func) => {
-  GM_xmlhttpRequest({
+  xmlHttpRequest({
     method: method,
     url: url,
     data: data,
@@ -114,7 +114,7 @@ function saveFlags() {
     regions[i] = selectedFlags[i].title;
   }
 
-  GM_setValue(namespace, regions);
+  setValue(namespace, regions);
 }
 
 /** Add a flag to our selection.
@@ -282,43 +282,55 @@ function resolveFlags() {
   );
 }
 
-regions = GM_getValue(namespace);
-if (!regions) { // Should only be called before you set flags for the first time.
-  regions = [];
-  window.confirm('[BantFlags]: No Flags detected.\nIf this is your first time running bantflags, look for the "Click to load flags." button at the bottom right of the thread, then select your flag and press the ">>" button.');
+function main() {
+  if (!regions) { // Should only be called before you set flags for the first time.
+    regions = [];
+    window.confirm('[BantFlags]: No Flags detected.\nIf this is your first time running bantflags, look for the "Click to load flags." button at the bottom right of the thread, then select your flag and press the ">>" button.');
+  }
+
+  // See Docs/styles.css
+  addGlobalStyle('.flagsForm{float: right; clear: right; margin: 20px 10px;} #flagSelect{display:none;} .bantflags_flag{padding: 1px;} [title^="Romania"]{ position: relative; animation: shakeAnim 0.1s linear infinite;} @keyframes shakeAnim{ 0% {left: 1px;} 25% {top: 2px;} 50% {left: 1px;} 75% {left: 0px;} 100% {left: 2px;}} #flagSelect ul {list-style-type: none;padding: 0;margin-bottom: 0;cursor: pointer;bottom: 100%;height: 200px;overflow: auto;position: absolute;width:200px;background-color:#fff}#flagSelect ul li {display: block;}#flagSelect ul li:hover {background-color: #ddd;}#flagSelect {position: absolute;}#flagSelect input {width: 200px;} #flagSelect .hide {display: none;}#flagSelect img {margin-left: 2px;}');
+
+  // We get flags using different selectors, and we need to align them differently.
+  if (software.yotsuba) {
+    debug('4chan');
+    board_id = 'bant';
+    getPosts('.postContainer');
+
+    addGlobalStyle('.bantFlag {padding: 0px 0px 0px 5px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;} .flag{top: 0px;left: -1px}');
+    init();
+  }
+
+  if (software.nodegucaDoushio) {
+    debug('Nineball');
+    board_id = window.location.pathname.split('/')[1];
+    getPosts('section[id], article[id]');
+
+    addGlobalStyle('.bantFlag {cursor: default} .bantFlag img {pointer-events: none;}');
+    init();
+  }
+
+  if (software.foolfuuka) {
+    debug('FoolFuuka');
+    board_id = 'bant';
+    getPosts('article[id]');
+
+    addGlobalStyle('.bantFlag{top: -2px !important;left: -1px !important}');
+  }
+
+  resolveFlags();
 }
 
-// See Docs/styles.css
-addGlobalStyle('.flagsForm{float: right; clear: right; margin: 20px 10px;} #flagSelect{display:none;} .bantflags_flag{padding: 1px;} [title^="Romania"]{ position: relative; animation: shakeAnim 0.1s linear infinite;} @keyframes shakeAnim{ 0% {left: 1px;} 25% {top: 2px;} 50% {left: 1px;} 75% {left: 0px;} 100% {left: 2px;}} #flagSelect ul {list-style-type: none;padding: 0;margin-bottom: 0;cursor: pointer;bottom: 100%;height: 200px;overflow: auto;position: absolute;width:200px;background-color:#fff}#flagSelect ul li {display: block;}#flagSelect ul li:hover {background-color: #ddd;}#flagSelect {position: absolute;}#flagSelect input {width: 200px;} #flagSelect .hide {display: none;}#flagSelect img {margin-left: 2px;}');
-
-// We get flags using different selectors, and we need to align them differently.
-if (software.yotsuba) {
-  debug('4chan');
-  board_id = 'bant';
-  getPosts('.postContainer');
-
-  addGlobalStyle('.bantFlag {padding: 0px 0px 0px 5px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;} .flag{top: 0px;left: -1px}');
-  init();
+if (isGM4) {
+  (async () => {
+    regions = await getValue(namespace);
+    main();
+  })();
 }
-
-if (software.nodegucaDoushio) {
-  debug('Nineball');
-  board_id = window.location.pathname.split('/')[1];
-  getPosts('section[id], article[id]');
-
-  addGlobalStyle('.bantFlag {cursor: default} .bantFlag img {pointer-events: none;}');
-  init();
+else {
+  regions = getValue(namespace);
+  main();
 }
-
-if (software.foolfuuka) {
-  debug('FoolFuuka');
-  board_id = 'bant';
-  getPosts('article[id]');
-
-  addGlobalStyle('.bantFlag{top: -2px !important;left: -1px !important}');
-}
-
-resolveFlags();
 
 if (software.yotsuba) {
   const GetEvDetail = e => e.detail || e.wrappedJSObject.detail;
