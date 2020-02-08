@@ -22,31 +22,31 @@ namespace BantFlags.Data
             Flags = flags;
         }
 
-        public static Result<PostModel> Create(string post_nr, string board, string regions, string splitFlag, HashSet<string> knownFlags, HashSet<string> boards)
+        public static (PostModel, string) Create(string post_nr, string board, string regions, string splitFlag, HashSet<string> knownFlags, HashSet<string> boards)
         {
             string[] empty = { "empty, or there were errors. Re-set your flags." };
 
             if (!int.TryParse(post_nr, out int postNumber))
-                return Result<PostModel>.Fail("Invalid post number.");
+                return (default, "Invalid post number.");
 
             if (!boards.Contains(board))
-                return Result<PostModel>.Fail("Invalid board parameter.");
+                return (default, "Invalid board parameter.");
 
             if (regions == null)
-                return Result<PostModel>.Pass(new PostModel(postNumber, board, empty));
+                return (new PostModel(postNumber, board, empty), default);
 
             var flags = regions.Split(splitFlag);
 
             if (flags.Count() > 30)
-                return Result<PostModel>.Fail("Too many flags.");
+                return (default, "Too many flags.");
 
             foreach (string flag in flags)
             {
                 if (!knownFlags.Contains(flag)) // Not ideal but it's better than doing it in the controller or passing the database here.
-                    return Result<PostModel>.Pass(new PostModel(postNumber, board, empty));
+                    return (new PostModel(postNumber, board, empty), default);
             }
 
-            return Result<PostModel>.Pass(new PostModel(postNumber, board, flags));
+            return (new PostModel(postNumber, board, flags), default);
         }
     }
 }

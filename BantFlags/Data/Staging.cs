@@ -68,35 +68,36 @@ namespace BantFlags.Data
             FlagMethod = method;
         }
 
-        public static Result<Flag> CreateFromDelete(string name)
-            => Result<Flag>.Pass(new Flag(name, Method.Delete)); // We don't need any validation for deleted flags.
+        public static Flag CreateFromDelete(string name) => new Flag(name, Method.Delete); // We don't need any validation for deleted flags.
 
-        public static Result<Flag> CreateFromRename(string oldName, string newName, HashSet<string> names)
+        public static (Flag, string) CreateFromRename(string oldName, string newName, HashSet<string> names)
         {
-            Result<string> fileName = ValidateFileName(newName, names);
+            (bool valid, string error) = ValidateFileName(newName, names);
 
-            if (fileName.Failed)
-                return Result<Flag>.Fail(fileName.ErrorMessage);
+            if (!valid)
+            {
+                return (default, error);
+            }
 
-            return Result<Flag>.Pass(new Flag(newName, oldName, Method.Rename));
+            return (new Flag(newName, oldName, Method.Rename), default);
         }
 
-        public static async Task<Result<Flag>> CreateFromFile(IFormFile upload, HashSet<string> names)
+        public static async Task<(Flag, string)> CreateFromFile(IFormFile upload, HashSet<string> names)
         {
             byte[] PNGHeader = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
 
             if (upload.ContentType.ToLower() != "image/png")
-                return Result<Flag>.Fail("Image must be a png.");
+                return (default, "Image must be a png.");
 
             if (upload.Length > 15 * 1024)
-                return Result<Flag>.Fail("File too big. Max size is 15kb.");
+                return (default, "File too big. Max size is 15kb.");
 
             var name = Path.GetFileNameWithoutExtension(upload.FileName);
 
-            Result<string> fileName = ValidateFileName(name, names);
+            (bool valid, string error) = ValidateFileName(name, names);
 
-            if (fileName.Failed)
-                return Result<Flag>.Fail(fileName.ErrorMessage);
+            if (!valid)
+                return (default, error);
 
             using (var memoryStream = new MemoryStream())
             {
@@ -106,7 +107,7 @@ namespace BantFlags.Data
                 using (var image = new MagickImage(memoryStream))
                 {
                     if (image.Width != 16 || image.Height != 11)
-                        return Result<Flag>.Fail("Invalid image dimensions. Flags should be 16px by 11px.");
+                        return (default, "Invalid image dimensions. Flags should be 16px by 11px.");
                 }
 
                 using (var reader = new BinaryReader(memoryStream))
@@ -114,11 +115,11 @@ namespace BantFlags.Data
                     reader.BaseStream.Position = 0;
 
                     if (!reader.ReadBytes(PNGHeader.Length).SequenceEqual(PNGHeader))
-                        return Result<Flag>.Fail("Invalid png header.");
+                        return (default, "Invalid png header.");
                 }
             }
 
-            return Result<Flag>.Pass(new Flag(name, Method.Add));
+            return (new Flag(name, Method.Add), default);
         }
 
         /// <summary>
@@ -126,24 +127,24 @@ namespace BantFlags.Data
         /// </summary>
         /// <param name="name">The file name to validate.</param>
         /// <param name="names">The list of current file names.</param>
-        private static Result<string> ValidateFileName(string name, HashSet<string> names)
+        private static (bool, string) ValidateFileName(string name, HashSet<string> names)
         {
             if (string.IsNullOrWhiteSpace(name))
-                return Result<string>.Fail("Flag name can't be empty.");
+                return (false, "Flag name can't be empty.");
 
             if (name.Length > 100)
-                return Result<string>.Fail("Flag name too long.");
+                return (false, "Flag name too long.");
 
             if (name == "empty, or there were errors. Re - set your flags.")
-                return Result<string>.Fail("Invalid flag name.");
+                return (false, "Invalid flag name.");
 
             if (name.Contains("||") || name.Contains(","))
-                return Result<string>.Fail("Flag name contains invalid characters. You can't use \"||\" or \",\".");
+                return (false, "Flag name contains invalid characters. You can't use \"||\" or \",\".");
 
             if (names.Contains(name))
-                return Result<string>.Fail("A flag with that name already exists.");
+                return (false, "A flag with that name already exists.");
 
-            return Result<string>.Pass(name);
+            return (true, name);
         }
     }
 }

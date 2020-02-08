@@ -43,7 +43,7 @@ namespace BantFlags
 
         public IActionResult OnPostDelete(string flag)
         {
-            var stagingFlag = Flag.CreateFromDelete(flag).Value;
+            var stagingFlag = Flag.CreateFromDelete(flag);
 
             StagedFlags.Flags.Add(stagingFlag);
             StagedFlags.Names.Remove(stagingFlag.Name);
@@ -54,28 +54,28 @@ namespace BantFlags
 
         public IActionResult OnPostRename(string flag, string newName)
         {
-            var stagingFlag = Flag.CreateFromRename(flag, newName, AllNames);
+            (Flag stagingFlag, string error) = Flag.CreateFromRename(flag, newName, AllNames);
 
-            if (stagingFlag.Failed)
+            if (stagingFlag is null)
             {
-                Message = stagingFlag.ErrorMessage;
+                Message = error;
                 return Page();
             }
 
-            StagedFlags.Flags.Add(stagingFlag.Value);
-            StagedFlags.Names.Add(stagingFlag.Value.Name);
+            StagedFlags.Flags.Add(stagingFlag);
+            StagedFlags.Names.Add(stagingFlag.Name);
 
-            Message = $"{stagingFlag.Value.OldName} renamed to {stagingFlag.Value.Name}.";
+            Message = $"{stagingFlag.OldName} renamed to {stagingFlag.Name}.";
             return Page();
         }
 
         public async Task<IActionResult> OnPostAddAsync(IFormFile upload, bool gloss)
         {
-            var stagingFlag = await Flag.CreateFromFile(upload, AllNames);
+            (Flag stagingFlag, string error) = await Flag.CreateFromFile(upload, AllNames);
 
-            if (stagingFlag.Failed)
+            if (stagingFlag is null)
             {
-                Message = stagingFlag.ErrorMessage;
+                Message = error;
                 return Page();
             }
 
@@ -98,9 +98,9 @@ namespace BantFlags
 
             image.Write(WebRoot + "/flags/staging/" + upload.FileName);
 
-            StagedFlags.Flags.Add(stagingFlag.Value);
+            StagedFlags.Flags.Add(stagingFlag);
 
-            Message = $"{stagingFlag.Value.Name} uploaded";
+            Message = $"{stagingFlag.Name} uploaded";
             return Page();
         }
 
