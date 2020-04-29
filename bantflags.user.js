@@ -294,7 +294,6 @@ function main() {
   // We get flags using different selectors, and we need to align them differently.
   if (software.yotsuba) {
     debug('4chan');
-    board_id = 'bant';
     getPosts('.postContainer');
 
     addGlobalStyle('.bantFlag {padding: 0px 0px 0px 5px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;} .flag{top: 0px;left: -1px}');
@@ -303,7 +302,6 @@ function main() {
 
   if (software.nodegucaDoushio) {
     debug('Nineball');
-    board_id = window.location.pathname.split('/')[1];
     getPosts('section[id], article[id]');
 
     addGlobalStyle('.bantFlag {cursor: default} .bantFlag img {pointer-events: none;}');
@@ -312,12 +310,12 @@ function main() {
 
   if (software.foolfuuka) {
     debug('FoolFuuka');
-    board_id = 'bant';
     getPosts('article[id]');
 
     addGlobalStyle('.bantFlag{top: -2px !important;left: -1px !important}');
   }
 
+  board_id = window.location.pathname.split('/')[1];
   resolveFlags();
 }
 
