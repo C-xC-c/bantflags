@@ -2,21 +2,22 @@
 A user script and backend enabling user created flags on [[https://boards.4chan.org/bant][/bant/]],
 originally based on [[https://github.com/flaghunters/Extra-Flags-for-4chan][extraflags]].
 
- [[https://flags.plum.moe/bantflags.user.js][Install bantflags]]
+[[https://flags.plum.moe/bantflags.user.js][Install bantflags]]
 
 ** Userscript
-The userscript uses of =GM_xmlhttpRequest= to get and post flags with
+The userscript uses of ~GM_xmlhttpRequest~ to get and post flags with
 the backend . A user's flags are stored between pages using
-=GM_setValue= and =GM_getValue=.
+~GM_setValue~ and ~GM_getValue~.
 
 Old versions of GreaseMonkey will be able to recieve updates to the
-script through the =@updateURL= and =@downloadURL= directives, though
+script through the ~@updateURL~ and ~@downloadURL~ directives, though
 these were depricated sometime in GreaseMonkey 3.x and updates are
 only checked from the location the script was downloaded from so be
 careful where you upload links.
 
-On self hosting, changing =back_end= to your domain /should/ be all
-you need to do, but don't take this as fact.
+On self hosting, changing ~back_end~ to your domain /should/ be all
+you need to do, but don't take this as fact. I haven't tested the
+example nginx config.
 
 The userscript has been designed specifically to target ECMAScript
 2015 (ES6), making liberal use of arrow functions, and const/let
@@ -43,56 +44,40 @@ declarations. Update your hecking browser.
 2) Clone and build the BantFlags solution.
 3) Create the database using [[https://github.com/C-xC-c/BantFlags/blob/master/Environment/database.sql][database.sql]].
    - *Change the password*.
-4) configure =BantFlags/appsettings.example.json= with your connection
+4) configure ~BantFlags/appsettings.example.json~ with your connection
    string and webroot (where you'll serve the flags from *without a
-   trailing slash*) and rename it to =appsettings.json=
-   - See below for an example appsettings.json.
-   - ASP.NET Core applications look for a folder called =wwwroot= in
+   trailing slash*) and rename it to ~appsettings.json~
+   - [[./BantFlags/appsettings.example.json][example appsettings.json]]
+   - ASP.NET Core applications look for a folder called ~wwwroot~ in
      the same directory as the application for static files. However
-     you can choose to logically seperate these by providing a vaild
-     directory to =webroot=.
+      you can choose to logically seperate these by providing a vaild
+     directory to ~webroot~.
      - That is to say, if the bantflags application is in
-       =/var/www/bantflags/BantFlags.dll=, the program will look for
-       the folder =/var/www/bantflags/wwwroot/= to host static content,
-       or whatever directory is provided to =wwwroot=.
+       ~/var/www/bantflags/BantFlags.dll~, the program will look for
+       the folder ~/var/www/bantflags/wwwroot/~ to host static content,
+       or whatever directory is provided to ~wwwroot~.
 5) If you're hosting on your GNU/Linux distribution of choice, Create a
-   folder called =keys= in the same directory as the bantflags
+   folder called ~keys~ in the same directory as the bantflags
    executable.
-   - E.G. =/var/www/bantflags/keys/=
+   - E.G. ~/var/www/bantflags/keys/~
      - This is because ASP.NET Core uses some cryptic bullshit anti
        forgery token when processing HTML forms, and it's unable to
        persistantly store the decryption keys in memory on
        GNU/Linux. This directory will store said keys when you or
        users upload flags to /upload. The path uses
-       =AppDomain.CurrentDomain.BaseDirectory= internally,
+       ~AppDomain.CurrentDomain.BaseDirectory~ internally,
        I.E. wherever the program is.
 6) Add flags to the backend by uploading them to the flag console (/Upload).
    - Flags must be 16x11 pixels and under 15kb. Their names must not
      exceed 100 characters and cannot contain either "||" or ",".
 7) Configure your webserver of choice to forward requests to kestral
    - [[https://github.com/C-xC-c/BantFlags/blob/master/Environment/nginx.conf][Example nginx config.]]
-8) Run with =dotnet BantFlags.dll= or create a service to run it as a
+8) Run with ~dotnet BantFlags.dll~ or create a service to run it as a
    daemon.
    - [[https://github.com/C-xC-c/BantFlags/blob/master/Environment/bantflags.service][Example systemd service.]]
 9) ???
 10) profit.
 
-**** Example appsettings.json
-#+BEGIN_SRC javascript
-  {
-    "dbconfig": {
-      "connectionstring": "Server=localhost;Port=3306;User ID=user;Password=password;Database=bantflags",
-      "poolsize": 2,
-      "boards": [
-        "bant",
-        "nap",
-        "srsbsn"
-      ]
-    },
-    "webroot": "/var/www/html",
-    "staging-password": "supersecretpassword"
-  }
-#+END_SRC
 *** Database
 Tables look like this:
 
@@ -109,13 +94,13 @@ Tables look like this:
 |  1 |       1 |    1 |
 |  2 |       1 |    2 |
 |  2 |       2 |    2 |
-where post_nr and flag in *postflags* are the id fields in their
+where ~post_nr~ and ~flag~ in *postflags* are the id fields in their
 respective tables.
 *** API
 The backend exposes three endpoints for the userscript to get and post
-flags. Flags themselves are hosted from the =flags/= directory. This
-will be whatever value you gave to =webroot= (or
-=/path/to/bantflags/wwwroot/= if no value is provided) + =flags/=.
+flags. Flags themselves are hosted from the ~flags/~ directory. This
+will be whatever value you gave to ~webroot~ (or
+~/path/to/bantflags/wwwroot/~ if no value is provided) + ~flags/~.
 
 | route      | purpse                                     |
 |------------+--------------------------------------------|
@@ -126,7 +111,7 @@ will be whatever value you gave to =webroot= (or
 
 ** Backwards Compatibility
 The API is 1:1 compatable with all previous versions of
-bantflags. Further improvements are achieved by encoding a =version=
+bantflags. Further improvements are achieved by encoding a ~version~
 variable when poking endpoints which allows for breaking changes in
 the script and backend while guaranteeing data can be parsed on both
 ends. See [[https://github.com/C-xC-c/BantFlags/tree/master/Docs/][Docs/{endpoint}]] for changes and compatibility.
