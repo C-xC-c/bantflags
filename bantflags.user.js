@@ -242,7 +242,7 @@ function loadFlags(response) {
         let flag = flags[i];
 
         let newFlag = createAndAssign('a', {
-          innerHTML: '<img src="' + back_end + flag_dir + flag + '.png" title="' + flag + '"> ',
+          innerHTML: '<img src="' + back_end + flag_dir + flag + '.png" title="' + flag + '">',
           className: 'bantFlag',
           target: '_blank'
         });
