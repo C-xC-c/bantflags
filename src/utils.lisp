@@ -26,12 +26,6 @@
 (defun set-db-conn ()
   (setq conn (conf 'db-conn)))
 
-(defun @plain ()
-  (setf (hunchentoot:content-type*) "text/plain"))
-
-(defun @json ()
-  (setf (hunchentoot:content-type*) "application/json"))
-
 (defun get-version (thing)
   (if (null thing) 0
       (or (parse-integer thing :junk-allowed t) 0)))
@@ -60,3 +54,18 @@
              always (gethash flag *flags*))
        (values t flags))
       (t (values t empty-flag)))))
+
+(defun host-dir (uri path)
+  (push
+   (hunchentoot:create-folder-dispatcher-and-handler uri path)
+   hunchentoot:*dispatch-table*))
+
+;; This is uneccessarily complicated, no I'm not sorry
+(defmacro content-type (types)
+  (cons 'progn
+        (mapcar (lambda (type) `(defun ,(car type) (reply)
+                             (setf (tbnl:content-type* reply) ,(cadr type))))
+                types)))
+(content-type
+ ((@json "application/json")
+  (@plain "text/plain")))
