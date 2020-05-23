@@ -30,7 +30,7 @@
        (hunchentoot:abort-request-handler))
      ,@body))
 
-(handle :post (api-post :uri "/staging/post")
+(handle :post (api-post :uri "/api/post")
     (post_nr regions board version)
   (setf (hunchentoot:content-type*) "application/json")
   (let ((separator (if (< 1 (get-version version)) "," "||")))
@@ -42,7 +42,7 @@
         (t
          (format nil "{\"Error\": \"~a\"}~%" msg))))))
 
-(handle :post (api-get :uri "/staging/get")
+(handle :post (api-get :uri "/api/get")
     (post_nrs board version)
   (@json tbnl:*reply*)
   (setf post_nrs (str:split "," post_nrs))
@@ -52,7 +52,7 @@
      (format nil "~a~%" (get-posts post_nrs board)))
     (t (format nil "~a~%" "bad"))))
 
-(handle :get (api-flags :uri "/staging/flags")
+(handle :get (api-flags :uri "/api/flags")
     ()
   (@plain tbnl:*reply*)
   (format nil "~a~%" *flags-txt*))
