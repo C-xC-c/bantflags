@@ -38,7 +38,7 @@ smart enough to make the database fields into (values rows columns)"
 (dbfun insert-post (post_nr board flags)
        (dbi:do-sql conn
          (format nil "insert ignore into posts (post_nr, board) values (~a, '~a');" post_nr board))
-       (let ((post-id (cadr (dbi:fetch (dbi:execute (dbi:prepare conn "select id from posts where post_nr = 9999 and board = 'bant';"))))))
+       (let ((post-id (cadr (dbi:fetch (dbi:execute (dbi:prepare conn (format nil "select id from posts where post_nr = ~a and board = '~a';" post_nr board)))))))
          (dbi:do-sql conn
              (with-output-to-string (s)
                (format s "insert into postflags (post_nr, flag) values")
