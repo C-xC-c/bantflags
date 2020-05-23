@@ -24,7 +24,7 @@
                                   (format nil "~{~a~^~%~}" (mapcan (lambda (x) (cdr x)) flags))
                                   ""))))
 (defun set-db-conn ()
-  (setq conn (conf 'db-conn)))
+  (setq conn-str (conf 'db-conn)))
 
 (defun get-version (thing)
   (if (null thing) 0

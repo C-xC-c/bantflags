@@ -7,7 +7,7 @@
   :serial t
   :depends-on (:hunchentoot
                :str
-               :clsql
+               :cl-dbi
                :jonathan)
   :Components
   ((:file "utils")

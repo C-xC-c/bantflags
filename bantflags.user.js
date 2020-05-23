@@ -30,7 +30,7 @@
 // see the LICENSE file or <https://www.gnu.org/licenses/>
 
 // Change this if you want verbose debuging information in the console.
-const debugMode = false;
+const debugMode = true;
 
 const isGM4 = typeof GM_setValue === 'undefined';
 const setValue = isGM4 ? GM.setValue : GM_setValue;
@@ -40,12 +40,12 @@ const xmlHttpRequest = isGM4 ? GM.xmlHttpRequest : GM_xmlhttpRequest;
 //
 // DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE FLAG SELECT
 //
-const version = 2; // Breaking changes.
+const version = encodeURIComponent(2); // Breaking changes.
 const back_end = 'https://flags.plum.moe/';
-const api_flags = 'api/flags';
-const flag_dir = 'flags/';
-const api_get = 'api/get';
-const api_post = 'api/post';
+const api_flags = back_end + 'api/flags';
+const flag_dir = back_end + 'flags/';
+const api_get = back_end + 'api/get';
+const api_post = back_end + 'api/post';
 const namespace = 'BintFlegs';
 
 // If you increase this the server will ignore your post.
@@ -59,6 +59,11 @@ let flagsLoaded = false;
 // DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE FLAG SELECT
 //
 
+const debug = text => {
+  if (debugMode)
+    console.log('[BantFlags] ' + text);
+}
+
 // Test unqiue CSS paths to figure out what board software we're using.
 const software = {
   yotsuba: window.location.host === 'boards.4chan.org',
@@ -66,29 +71,14 @@ const software = {
   foolfuuka: document.querySelector('div[id="main"] article header .post_data') !== null
 };
 
-/** Wrapper around Object.assign and document.createElement
- * @param {string} element - The HTML Element to create.
- * @param {object} source - The properties to assign to the element. 
- * @returns {object} The HTML tag created */
 const createAndAssign = (element, source) => Object.assign(document.createElement(element), source);
 
 const toggleFlagButton = state => document.getElementById('append_flag_button').disabled = state === 'off' ? true : false;
 
-/** Add a stylesheet to the head of the document.
- * @param {string} css - The CSS rules for the stylesheet. 
- * @returns {object} The style element appended to the head */
-const addGlobalStyle = css => document.head.appendChild(createAndAssign('style', {
-  type: 'text/css',
-  innerHTML: css
-}));
+const flagSource = flag => flag_dir + flag + ".png";
 
-/** Write extra information to the console if debugMode is set to true.
- * @param {string} text - The text to write to the console. */
-function debug(text) {
-  if (debugMode) {
-    console.log('[BantFlags] ' + text);
-  }
-}
+/** Add styles to the <head> */
+const addGlobalStyle = css => document.head.appendChild(createAndAssign('style', { innerHTML: css }));
 
 /** Wrapper around GM_xmlhttpRequest.
  * @param {string} method - The HTTP method (GET, POST).
@@ -108,7 +98,7 @@ const makeRequest = ((method, url, data, func) => {
 /** Itterate over selected flags are store them across browser sessions.*/
 function saveFlags() {
   regions = [];
-  let selectedFlags = document.getElementsByClassName("bantflags_flag");
+  const selectedFlags = document.querySelectorAll("bantflags_flag");
 
   for (var i = 0; i < selectedFlags.length; i++) {
     regions[i] = selectedFlags[i].title;
@@ -118,7 +108,7 @@ function saveFlags() {
 }
 
 /** Add a flag to our selection.
- * @param {string} flag - The flag to add to our selection. If no value is passed it takes the current value from the flagSelect. */
+ * @param {string} flag - The flag to add to our selection. Either passed from saved flags or the current value of flagSelect */
 function setFlag(flag) {
   let UID = Math.random().toString(36).substring(7);
   let flagName = flag ? flag : document.querySelector('#flagSelect input').value;
@@ -126,27 +116,24 @@ function setFlag(flag) {
 
   flagContainer.appendChild(createAndAssign('img', {
     title: flagName,
-    src: back_end + flag_dir + flagName + '.png',
+    src: flagSource(flagName),
     id: UID,
     className: 'bantflags_flag'
   }));
 
-  if (flagContainer.children.length >= max_flags) {
+  if (flagContainer.children.length >= max_flags)
     toggleFlagButton('off');
-  }
 
-  document.getElementById(UID).addEventListener("click", (e) => {
+  document.getElementById(UID).addEventListener("click", e => {
     flagContainer.removeChild(e.target);
     toggleFlagButton('on');
     saveFlags();
   });
 
-  if (!flag) { // When we add a flag to our selection, save it for when we reload the page.
+  if (!flag) // We've added a new flag to our selection
     saveFlags();
-  }
 }
 
-/** Create flag button and initialise our selected flags */
 function init() {
   let flagsForm = createAndAssign('div', {
     className: 'flagsForm',
@@ -155,15 +142,13 @@ function init() {
 
   // Where do we append the flagsForm to?
   if (software.yotsuba) { document.getElementById('delform').appendChild(flagsForm); }
-  if (software.nodegucaDoushio) { document.querySelector('section').append(flagsForm); } // As posts are added the flagForm moves up the page. Could we append this after .section?
+  else if (software.nodegucaDoushio) { document.querySelector('section').append(flagsForm); } // As posts are added the flagForm moves up the page. Could we append this after .section?
 
-  for (var i in regions) {
+  for (let i = 0; i < regions.length; i++) {
     setFlag(regions[i]);
   }
 
-  document.getElementById('append_flag_button').addEventListener('click',
-    () => flagsLoaded ? setFlag() : alert('Load flags before adding them.'));
-
+  document.getElementById('append_flag_button').addEventListener('click', () => flagsLoaded ? setFlag() : alert('Load flags before adding them.'));
   document.getElementById('flagLoad').addEventListener('click', makeFlagSelect, { once: true });
 }
 
@@ -171,14 +156,16 @@ function init() {
 function makeFlagSelect() {
   makeRequest(
     "GET",
-    back_end + api_flags,
-    "version=" + encodeURIComponent(version),
+    api_flags,
+    "", // We can't send data, it's a GET request.
     function (resp) {
       debug('Loading flags.');
+			
       if (resp.status !== 200) {
-        return;
-      }
-
+				console.log('Couldn\'t get flag list from server')
+				return;
+			}
+			
       let flagSelect = document.getElementById('flagSelect');
       let flagList = flagSelect.querySelector('ul');
       let flagInput = flagSelect.querySelector('input');
@@ -186,16 +173,18 @@ function makeFlagSelect() {
 
       for (var i = 0; i < flags.length; i++) {
         let flag = flags[i];
-        flagList.appendChild(createAndAssign('li', {
-          innerHTML: '<img src="' + back_end + flag_dir + flag + '.png" title="' + flag + '"> <span>' + flag + '</span>'
-        }));
+        flagList.appendChild(createAndAssign('li',{
+					innerHTML: `<img src="${flagSource(flag)}" title="${flag}"><span>${flag}</span>`
+				}));
       }
 
-      flagSelect.addEventListener('click', (e) => {
-        listItem = e.target.nodeName === 'LI' ? e.target : e.target.parentNode; // So we can click the flag image and still select the flag.
-        if (listItem.nodeName === 'LI') {
-          flagInput.value = listItem.querySelector('span').innerHTML;
-        }
+      flagSelect.addEventListener('click', function (e) {
+				// So it works if we click the flag image
+				const node = e.target.nodeName === 'LI' ? e.target : e.target.parentNode;
+        if (node.nodeName === 'LI') {
+					flagInput.value = node.querySelector('span').innerHTML;
+				}
+				
         flagList.classList.toggle('hide');
       });
 
@@ -206,80 +195,67 @@ function makeFlagSelect() {
     });
 }
 
-/** add all of thhe post numbers on the page to postNrs.
- * @param {string} selector - The CSS selector who's id is the post number. */
+/** add all of the post numbers on the page to postNrs. */
 function getPosts(selector) {
-  let posts = document.querySelectorAll(selector);
+  const posts = document.querySelectorAll(selector);
 
-  for (var i = 0; i < posts.length; i++) {
-    let postNumber = software.yotsuba
-      ? posts[i].id.replace('pc', '') // Fuck you 4chan.
-      : posts[i].id;
-    postNrs.push(postNumber);
-  }
+  for (let i = 0; i < posts.length; i++) {
+    const postNumber = software.yotsuba
+					? posts[i].id.substr(2) // Fuck you 4chan.
+					: posts[i].id;
+
+		postNrs.push(postNumber);
+	}
   debug(postNrs);
-}
-
-/** Take the response from resolveRefFlags and append flags to their respective post numbers.
- * @param {XMLHttpRequest} response - The response data from resolveRefFlags. */
-function loadFlags(response) {
-  debug('JSON: ' + response.responseText);
-  var jsonData = JSON.parse(response.responseText);
-
-  Object.keys(jsonData).forEach(function (post) {
-
-    // Get the post header with a CSS selector. Different for each board software.
-    var flagContainer;
-    if (software.nodegucaDoushio) { flagContainer = document.querySelector('[id="' + post + '"] header'); }
-    if (software.yotsuba) { flagContainer = document.querySelector('[id="pc' + post + '"] .postInfo  .nameBlock'); }
-    if (software.foolfuuka) { flagContainer = document.querySelector('[id="' + post + '"] .post_data .post_type'); }
-
-    let flags = jsonData[post];
-    if (flags.length > 0) {
-      console.log('[BantFlags] Resolving flags for >>' + post);
-
-      for (var i = 0; i < flags.length; i++) {
-        let flag = flags[i];
-
-        let newFlag = createAndAssign('a', {
-          innerHTML: '<img src="' + back_end + flag_dir + flag + '.png" title="' + flag + '">',
-          className: 'bantFlag',
-          target: '_blank'
-        });
-
-        if (software.foolfuuka) {
-          newFlag.style = 'padding: 0px 0px 0px ' + (3 + 2 * (i > 0)) + 'px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;';
-        }
-
-        if (software.nodegucaDoushio) {
-          newFlag.title = flag;
-        }
-
-        flagContainer.append(newFlag);
-
-        console.log('\t -> ' + flag);
-      }
-    }
-  });
-
-  postNrs = [];
 }
 
 /** Get flags from the database using values in postNrs and pass the response on to onFlagsLoad */
 function resolveFlags() {
-  debug('Board is: ' + board_id);
   makeRequest(
     'POST',
-    back_end + api_get,
-    'post_nrs=' + encodeURIComponent(postNrs) + '&board=' + encodeURIComponent(board_id) + '&version=' + encodeURIComponent(version),
+    api_get,
+    'post_nrs=' + encodeURIComponent(postNrs) + '&board=' + encodeURIComponent(board_id) + '&version=' + version,
     function (resp) {
+
       if (resp.status !== 200) {
         console.log('[bantflags] Couldn\'t load flags. Refresh the page.');
         return;
       }
-      loadFlags(resp);
-    }
-  );
+			
+			const jsonData = JSON.parse(resp.responseText);
+			debug(`JSON: ${resp.responseText}`);
+			
+			Object.keys(jsonData).forEach(post => {
+				let flags = jsonData[post];
+
+				if (flags.length <= 0)
+					return;
+				
+				debug(`Resolving flags for >>${post}`);
+
+				let flagContainer;
+				if (software.yotsuba) { flagContainer = document.querySelector(`[id="pc${post}"] .postInfo .nameBlock`); }
+				else if (software.foolfuuka) { flagContainer = document.querySelector(`[id="${post}"] .post_data .post_type`); }
+				else if (software.nodegucaDoushio) { flagContainer = document.querySelector(`[id="${post}"] header`); }
+				
+				for (let i = 0; i < flags.length; i++) {
+					const flag = flags[i];
+
+					const newFlag = createAndAssign('a', {
+						innerHTML: `<img src="${flagSource(flag)}" title="${flag}">`,
+						className: 'bantFlag',
+						target: '_blank',
+						title: flag
+					});
+					
+					flagContainer.append(newFlag);
+
+					debug(`\t -> ${flag}`);
+				}
+			});
+
+			postNrs = [];
+    });
 }
 
 function main() {
@@ -289,19 +265,16 @@ function main() {
   }
 
   // See Docs/styles.css
-  addGlobalStyle('.flagsForm{float: right; clear: right; margin: 20px 10px;} #flagSelect{display:none;} .bantflags_flag{padding: 1px;} [title^="Romania"]{ position: relative; animation: shakeAnim 0.1s linear infinite;} @keyframes shakeAnim{ 0% {left: 1px;} 25% {top: 2px;} 50% {left: 1px;} 75% {left: 0px;} 100% {left: 2px;}} #flagSelect ul {list-style-type: none;padding: 0;margin-bottom: 0;cursor: pointer;bottom: 100%;height: 200px;overflow: auto;position: absolute;width:200px;background-color:#fff}#flagSelect ul li {display: block;}#flagSelect ul li:hover {background-color: #ddd;}#flagSelect {position: absolute;}#flagSelect input {width: 200px;} #flagSelect .hide {display: none;}#flagSelect img {margin-left: 2px;}');
+	addGlobalStyle('.bantFlag{padding: 0px 0px 0px 5px; display: inline-block; width: 16px; height: 11px; position: relative;} .bantflags_flag{padding: 1px;} [title^="Romania"]{ position: relative; animation: shakeAnim 0.1s linear infinite;} @keyframes shakeAnim{ 0% {left: 1px;} 25% {top: 2px;} 50% {left: 1px;} 75% {left: 0px;} 100% {left: 2px;}}.flagsForm{float: right; clear: right; margin: 20px 10px;} #flagSelect{display:none;}  #flagSelect ul{list-style-type: none;padding: 0;margin-bottom: 0;cursor: pointer;bottom: 100%;height: 200px;overflow: auto;position: absolute;width:200px;background-color:#fff} #flagSelect ul li {display: block;} #flagSelect ul li:hover {background-color: #ddd;}#flagSelect {position: absolute;}#flagSelect input {width: 200px;} #flagSelect .hide {display: none;}#flagSelect img {margin-left: 2px;}')
 
-  // We get flags using different selectors, and we need to align them differently.
   if (software.yotsuba) {
-    debug('4chan');
     getPosts('.postContainer');
 
-    addGlobalStyle('.bantFlag {padding: 0px 0px 0px 5px; vertical-align:;display: inline-block; width: 16px; height: 11px; position: relative;} .flag{top: 0px;left: -1px}');
+    addGlobalStyle('.flag{top: 0px;left: -1px}');
     init();
   }
 
   if (software.nodegucaDoushio) {
-    debug('Nineball');
     getPosts('section[id], article[id]');
 
     addGlobalStyle('.bantFlag {cursor: default} .bantFlag img {pointer-events: none;}');
@@ -309,17 +282,18 @@ function main() {
   }
 
   if (software.foolfuuka) {
-    debug('FoolFuuka');
     getPosts('article[id]');
 
     addGlobalStyle('.bantFlag{top: -2px !important;left: -1px !important}');
   }
-
+	
   board_id = window.location.pathname.split('/')[1];
-  resolveFlags();
+	debug(board_id);
+
+	resolveFlags();
 }
 
-if (isGM4) {
+if (isGM4) { // Fuck you GM4
   (async () => {
     regions = await getValue(namespace);
     main();
@@ -330,20 +304,20 @@ else {
   main();
 }
 
+const postFlags = (post_nr, func = resp => debug(resp.responseText)) => makeRequest(
+  'POST',
+  api_post,
+	`post_nr=${encodeURIComponent(post_nr)}&board=${encodeURIComponent(board_id)}&regions=${encodeURIComponent(regions)}&version=${version}`,
+	func);
+
 if (software.yotsuba) {
   const GetEvDetail = e => e.detail || e.wrappedJSObject.detail;
+	
+  // 4chanX and native extension respectively
+  document.addEventListener('QRPostSuccessful', e => postFlags(e.detail.postID));
+  document.addEventListener('4chanQRPostSuccess', e => postFlags(GetEvDetail(e).postId));
 
-  const postFlags = post_nr => makeRequest(
-    'POST',
-    back_end + api_post,
-    'post_nr=' + encodeURIComponent(post_nr) + '&board=' + encodeURIComponent(board_id) + '&regions=' + encodeURIComponent(regions) + '&version=' + encodeURIComponent(version),
-    func = resp => debug(resp.responseText));
-
-  // Send flags to the backend when we makle a post. Top is 4chanX, bottom is native extension.
-  document.addEventListener('QRPostSuccessful', e => postFlags(e.detail.postID), false);
-  document.addEventListener('4chanQRPostSuccess', e => postFlags(GetEvDetail(e).postId), false);
-
-  // I need to look at these.
+	// I need to look at these.
   document.addEventListener('ThreadUpdate', function (e) {
     var evDetail = GetEvDetail(e);
     var evDetailClone = typeof cloneInto === 'function' ? cloneInto(evDetail, unsafeWindow) : evDetail;
@@ -373,44 +347,49 @@ if (software.yotsuba) {
     });
 
     resolveFlags();
-  }, false);
+	}, false);
 }
 
 if (software.nodegucaDoushio) {
-  // This is poking at the mutations made on the page to figure out what happened and thus what actions to take.
-  // There is full support for nodeguca but I don't have a Doushio board I feel comfortable spamming to ensure it works properly there. There is at least partial support.
-  new MutationObserver(function (mutations) {
-    mutations.forEach(function (mutation) {
-      if (mutation.addedNodes.length > 0) { // A post was added.
-        var firstAddedNode = mutation.addedNodes[0].nodeName;
 
-        // Enter a thread or change boards. Checks for when a post is added while in the index.
-        if (mutation.target.nodeName === 'THREADS' && firstAddedNode !== 'HR' && firstAddedNode !== 'SECTION') {
-          board_id = window.location.pathname.split('/')[1];
-          setTimeout(getPosts('section[id], article[id]'), 2000);
-          resolveFlags();
-          init();
-        }
+	const postFunc = function() {
+		postNrs.push(mutation.target.id);
+		resolveFlags();
+	}
 
-        // You post.
-        if (firstAddedNode === 'HEADER') {
-          let data = 'post_nr=' + encodeURIComponent(mutation.target.id) + '&board=' + encodeURIComponent(board_id) + '&regions=' + encodeURIComponent(regions) + '&version=' + encodeURIComponent(version);
-          makeRequest(
-            'POST',
-            back_end + api_post,
-            data,
-            function () {
-              postNrs.push(mutation.target.id);
-              resolveFlags();
-            });
-        }
+	const badNodes = ['HR', 'SECTION'];
+	
+  new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+			if (mutation.addedNodes.length <= 0)
+				return; // We only care if something post was added
+			
+      var firstAddedNode = mutation.addedNodes[0].nodeName;
 
-        // Someone else posts. Checks to see if you're hovering over a post.
-        if (firstAddedNode === 'ARTICLE' && mutation.target.nodeName !== "BODY" && mutation.target.id !== 'hover_overlay') {
-          postNrs.push(mutation.addedNodes[0].id);
-          setTimeout(resolveFlags, 1500);
-        }
+			// Enter a thread / change boards
+      if (mutation.target.nodeName === 'THREADS') {
+				if (badNodes.includes(firstAddedNode))
+					return; // We are in the index and a post was added, handled properly further down
+				
+        board_id = window.location.pathname.split('/')[1];
+        setTimeout(getPosts('section[id], article[id]'), 2000);
+        resolveFlags();
+        init();
       }
-    });
-  }).observe(document.body, { childList: true, subtree: true });
+
+      // We post
+      if (firstAddedNode === 'HEADER') {
+				postFlags(mutation.target.id, postFunc)
+			}
+
+			// Someone else posts
+      if (firstAddedNode === 'ARTICLE') {
+				if (mutation.target.nodeName === 'BODY' || mutation.target.id === 'hover_overlay')
+					return; // User is hovering over a post
+				
+        postNrs.push(mutation.addedNodes[0].id);
+        setTimeout(resolveFlags, 1500);
+      }
+		});
+	}).observe(document.body, { childList: true, subtree: true });
 }

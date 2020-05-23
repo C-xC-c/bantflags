@@ -1,9 +1,11 @@
 (defun init ()
   (set-db-conn)
   (dotimes (_ (cconf 'poolsize))
-    (clsql:connect conn :database-type :mysql :pool t :if-exists :new))
-  (when (eq nil clsql:*default-database*)
-    (error "fucked up connecting to database"))
+    (dbi:connect-cached :mysql
+                        :database-name (car conn-str)
+                        :username (nth 1 conn-str)
+                        :password (nth 2 conn-str)))
+  (ping) ;; test db conn
   (set-boards)
   (set-flags)
   (defvar +serb+ (make-instance 'hunchentoot:easy-acceptor
@@ -42,7 +44,7 @@
 
 (handle :post (api-get :uri "/staging/get")
     (post_nrs board version)
-  (@json *reply*)
+  (@json tbnl:*reply*)
   (setf post_nrs (str:split "," post_nrs))
   (cond
     ((and (loop for x in post_nrs always (post-number-p x))
