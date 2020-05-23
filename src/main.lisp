@@ -5,7 +5,7 @@
                         :database-name (car conn-str)
                         :username (nth 1 conn-str)
                         :password (nth 2 conn-str)))
-  (ping) ;; test db conn
+  (ping) ;; test db conn  
   (set-boards)
   (set-flags)
   (defvar +serb+ (make-instance 'hunchentoot:easy-acceptor

@@ -26,6 +26,7 @@ smart enough to make the database fields into (values rows columns)"
                                  :database-name (car conn-str)
                                  :username (nth 1 conn-str)
                                  :password (nth 2 conn-str))
+       (dbi:do-sql conn "set names 'utf8';") ;; I fucking hate computers
        ,@(cdr body))))
 
 (defun flag-id (flag)
