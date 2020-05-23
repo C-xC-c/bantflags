@@ -6,8 +6,8 @@
   :version "0.0.1"
   :serial t
   :depends-on (:hunchentoot
-               :str
-               :cl-dbi
+               :cl-ppcre
+               :clsql
                :jonathan)
   :Components
   ((:file "utils")

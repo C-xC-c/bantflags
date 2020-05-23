@@ -15,7 +15,6 @@
 
 (defun set-flags ()
   (setf *flags* (make-hash-table :test 'equal))
-
   (let ((flags (get-flags)))
     (loop for (id . flag) in flags
           do (setf (gethash (car flag) *flags*) id))
@@ -24,11 +23,7 @@
                                   (format nil "~{~a~^~%~}" (mapcan (lambda (x) (cdr x)) flags))
                                   ""))))
 (defun set-db-conn ()
-  (setq conn-str (conf 'db-conn)))
-
-(defun get-version (thing)
-  (if (null thing) 0
-      (or (parse-integer thing :junk-allowed t) 0)))
+  (setq conn (conf 'db-conn)))
 
 (defun post-number-p (post_nr)
   (if (or (null post_nr)
@@ -39,22 +34,21 @@
 (defun boardp (board)
   (gethash board *boards*))
 
-(defun post-valid-p (post_nr regions board separator)
-  (let ((flags (str:split separator regions)))
-    (cond
-      ((not (post-number-p post_nr))
-       (values nil "Invalid post number"))
-      ((not (boardp board))
-       (values nil "Invalid board parameter."))
-      ((null regions)
-       (values t empty-flag))
-      ((< 30 (length flags))
-       (values nil "Too many flags."))
-      ((loop for flag in flags
-             always (gethash flag *flags*))
-       (values t flags))
-      (t (values t empty-flag)))))
+(defun post-valid-p (post_nr regions board)
+  (cond
+    ((not (post-number-p post_nr))
+     (values nil "Invalid post number."))
+    ((not (boardp board))
+     (values nil "Invalid board parameter."))
+    ((null regions)
+     (values t empty-flag))
+    ((< 30 (length regions))
+     (values nil "Too many flags."))
+    ((every (lambda (flag) (gethash flag *flags*)) regions)
+     (values t regions))
+    (t (values t empty-flag))))
 
+;; Unused, should be in utils
 (defun host-dir (uri path)
   (push
    (hunchentoot:create-folder-dispatcher-and-handler uri path)

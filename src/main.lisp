@@ -1,11 +1,7 @@
 (defun init ()
   (set-db-conn)
   (dotimes (_ (cconf 'poolsize))
-    (dbi:connect-cached :mysql
-                        :database-name (car conn-str)
-                        :username (nth 1 conn-str)
-                        :password (nth 2 conn-str)))
-  (ping) ;; test db conn  
+    (clsql:connect conn :database-type :mysql :pool t :if-exists :new))
   (set-boards)
   (set-flags)
   (defvar +serb+ (make-instance 'hunchentoot:easy-acceptor
@@ -32,25 +28,25 @@
 
 (handle :post (api-post :uri "/api/post")
     (post_nr regions board version)
-  (setf (hunchentoot:content-type*) "application/json")
-  (let ((separator (if (< 1 (get-version version)) "," "||")))
-    (multiple-value-bind (result msg) (post-valid-p post_nr regions board separator)
-      (cond
-        (result
-         (insert-post post_nr board msg)
-         (format nil "{\"~a\": [~{\"~a\"~^,~}]}~%" post_nr msg))
-        (t
-         (format nil "{\"Error\": \"~a\"}~%" msg))))))
+  (@json tbnl:*reply*)
+  (setf regions (cl-ppcre:split "," regions))
+  (multiple-value-bind (result msg) (post-valid-p post_nr regions board)
+    (cond
+      (result
+       (insert-post post_nr board msg)
+       (format nil "{\"~a\": [~{\"~a\"~^,~}]}~%" post_nr msg))
+      (t (format nil "{\"Error\": \"~a\"}~%" msg)))))
 
 (handle :post (api-get :uri "/api/get")
     (post_nrs board version)
   (@json tbnl:*reply*)
-  (setf post_nrs (str:split "," post_nrs))
+  (setf post_nrs (cl-ppcre:split "," post_nrs))
   (cond
-    ((and (loop for x in post_nrs always (post-number-p x))
+    ((and (not (null post_nrs))
+          (every #'post-number-p post_nrs)
           (boardp board))
      (format nil "~a~%" (get-posts post_nrs board)))
-    (t (format nil "~a~%" "bad"))))
+    (t (format nil "{[\"~a\"]}~%" "bad"))))
 
 (handle :get (api-flags :uri "/api/flags")
     ()
