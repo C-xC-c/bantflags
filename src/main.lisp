@@ -6,7 +6,9 @@
   (set-flags)
   (defvar +serb+ (make-instance 'hunchentoot:easy-acceptor
                                 :port 4242
-                                :document-root (cconf 'www-root)))
+                                :document-root (cconf 'www-root)
+                                :access-log-destination nil
+                                :message-log-destination #p"/var/log/bantflags/erorr.log"))
   (hunchentoot:start +serb+))
 
 (defun main ()
