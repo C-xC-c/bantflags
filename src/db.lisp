@@ -2,6 +2,7 @@
 ;; This file is part of bantflags.
 ;; bantflags is licensed under the GNU AGPL Version 3.0 or later.
 ;; see the LICENSE file or <https://www.gnu.org/licenses/>
+(in-package #:bantflags)
 
 ;; Databases in common lisp are the fucking worst.
 ;; Don't even bother.

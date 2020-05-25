@@ -11,11 +11,13 @@
   :version "0.0.1"
   :serial t
   :depends-on (:hunchentoot
+               :hunchenhelpers
                :cl-ppcre
                :clsql
                :jonathan)
   :Components
-  ((:file "utils")
+  ((:file "package")
+   (:file "utils")
    (:file "db")
    (:file "config")
    (:file "main")))

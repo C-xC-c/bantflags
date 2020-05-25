@@ -1,117 +1,83 @@
 * BantFlags
-A user script and backend enabling user created flags on [[https://boards.4chan.org/bant][/bant/]],
-originally based on [[https://github.com/flaghunters/Extra-Flags-for-4chan][extraflags]].
+	A user script and backend enabling user created flags on [[https://boards.4chan.org/bant][/bant/]],
+	originally based on [[https://github.com/flaghunters/Extra-Flags-for-4chan][extraflags]].
 
-[[https://flags.plum.moe/bantflags.user.js][Install bantflags]]
+	[[https://flags.plum.moe/bantflags.user.js][Install bantflags]]
 
 ** Userscript
-The userscript uses of ~GM_xmlhttpRequest~ to get and post flags with
-the backend . A user's flags are stored between pages using
-~GM_setValue~ and ~GM_getValue~.
+	 The userscript uses of ~GM_xmlhttpRequest~ to get and post flags with
+	 the backend . A user's flags are stored between pages using
+	 ~GM_setValue~ and ~GM_getValue~.
 
-Old versions of GreaseMonkey will be able to recieve updates to the
-script through the ~@updateURL~ and ~@downloadURL~ directives, though
-these were depricated sometime in GreaseMonkey 3.x and updates are
-only checked from the location the script was downloaded from so be
-careful where you upload links.
+	 Old versions of GreaseMonkey will be able to recieve updates to the
+	 script through the ~@updateURL~ and ~@downloadURL~ directives, though
+	 these were depricated sometime in GreaseMonkey 3.x and updates are
+	 only checked from the location the script was downloaded from so be
+	 careful where you upload links.
 
-On self hosting, changing ~back_end~ to your domain /should/ be all
-you need to do, but don't take this as fact. I haven't tested the
-example nginx config.
-
-The userscript has been designed specifically to target ECMAScript
-2015 (ES6), making liberal use of arrow functions, and const/let
-declarations. Update your hecking browser.
+	 On self hosting, changing ~back_end~ to your domain /should/ be all
+	 you need to do, but don't take this as fact. I haven't tested the
+	 example nginx config.
+	 
+	 The userscript has been designed specifically to target ECMAScript
+	 2015 (ES6), making liberal use of arrow functions, and const/let
+	 declarations. Update your hecking browser.
 
 ** Backend
 *** Prerequisites
-- .NET Core 3.1
-- MariaDB / MySQL
-
-*** .NET dependancies
-- Nito.AsyncEX
-- Newtonsoft.Json
-- MySql.Data
-- Microsoft.AspNetCore.Mvc.NewtonsoftJson
-- Microsoft.AspNetCore.StaticFiles
-- Microsoft.AspNetCore.Razor
-- Microsoft.EntityFrameworkCore.SqlServer
-- Microsoft.EntityFrameworkCore.Tools
-- Magick.NET-Q8-AnyCPU
-
+		- I use SBCL
+*** Dependancies
+		- hunchentoot
+		- [[https://github.com/C-xC-c/hunchenhelpers][hunchenhelpers]], my hunchentoot helper library
+		- clsql
+		- jonathan, the JSON encoder/decoder
+		- cl-ppcre
 *** Setup
-1) [[https://dotnet.microsoft.com/download/dotnet-core][Install .NET Core]] 
-2) Clone and build the BantFlags solution.
-3) Create the database using [[https://github.com/C-xC-c/BantFlags/blob/master/Environment/database.sql][database.sql]].
-   - *Change the password*.
-4) configure ~BantFlags/appsettings.example.json~ with your connection
-   string and webroot (where you'll serve the flags from *without a
-   trailing slash*) and rename it to ~appsettings.json~
-   - [[./BantFlags/appsettings.example.json][example appsettings.json]]
-   - ASP.NET Core applications look for a folder called ~wwwroot~ in
-     the same directory as the application for static files. However
-      you can choose to logically seperate these by providing a vaild
-     directory to ~webroot~.
-     - That is to say, if the bantflags application is in
-       ~/var/www/bantflags/BantFlags.dll~, the program will look for
-       the folder ~/var/www/bantflags/wwwroot/~ to host static content,
-       or whatever directory is provided to ~wwwroot~.
-5) If you're hosting on your GNU/Linux distribution of choice, Create a
-   folder called ~keys~ in the same directory as the bantflags
-   executable.
-   - E.G. ~/var/www/bantflags/keys/~
-     - This is because ASP.NET Core uses some cryptic bullshit anti
-       forgery token when processing HTML forms, and it's unable to
-       persistantly store the decryption keys in memory on
-       GNU/Linux. This directory will store said keys when you or
-       users upload flags to /upload. The path uses
-       ~AppDomain.CurrentDomain.BaseDirectory~ internally,
-       I.E. wherever the program is.
-6) Add flags to the backend by uploading them to the flag console (/Upload).
-   - Flags must be 16x11 pixels and under 15kb. Their names must not
-     exceed 100 characters and cannot contain either "||" or ",".
-7) Configure your webserver of choice to forward requests to kestral
-   - [[https://github.com/C-xC-c/BantFlags/blob/master/Environment/nginx.conf][Example nginx config.]]
-8) Run with ~dotnet BantFlags.dll~ or create a service to run it as a
-   daemon.
-   - [[https://github.com/C-xC-c/BantFlags/blob/master/Environment/bantflags.service][Example systemd service.]]
-9) ???
-10) profit.
-
+		1. clone the project
+		2. Symlink src/ to your ~/quicklisp/local-projects
+		3. Move ~src/config.example.org~ to ~src/config.org~ and change it
+       to whatever your settings are.
+		4. Type the following into your repl:
+		#+BEGIN_SRC lisp
+		(ql:quickload :bantflags)
+		(bantflags:main)
+		#+END_SRC
+		You will almost certainly have several issues building clsql, the
+		database connector used. I've [[https://plum.moe/words/bludgeoning-clsql-and-mariadb.html][written a blog post]] on some of the
+		issues I've encountered personally, but there's no guarantee it'll
+		work. Piece of shit.
 *** Database
-Tables look like this:
+		Tables look like this:
 
-*posts*
-| id | post_nr | board |
-|  1 |   12345 | bant  |
-|  2 |   56789 | bant  |
-*flags*
-| id | flag      |
-|  1 | patchouli |
-|  2 | chen      |
-*postflags*
-| id | post_nr | flag |
-|  1 |       1 |    1 |
-|  2 |       1 |    2 |
-|  2 |       2 |    2 |
-where ~post_nr~ and ~flag~ in *postflags* are the id fields in their
-respective tables.
+		*posts*
+		| id | post_nr | board |
+		|  1 |   12345 | bant  |
+		|  2 |   56789 | bant  |
+		*flags*
+		| id | flag      |
+		|  1 | patchouli |
+		|  2 | chen      |
+		*postflags*
+		| id | post_nr | flag |
+		|  1 |       1 |    1 |
+		|  2 |       1 |    2 |
+		|  2 |       2 |    2 |
+		where ~post_nr~ and ~flag~ in *postflags* are the id fields in their
+		respective tables.
 *** API
-The backend exposes three endpoints for the userscript to get and post
-flags. Flags themselves are hosted from the ~flags/~ directory. This
-will be whatever value you gave to ~webroot~ (or
-~/path/to/bantflags/wwwroot/~ if no value is provided) + ~flags/~.
+		The backend exposes three endpoints for the userscript to get and
+		post flags. Flags themselves are hosted from ~flags/~ which is
+		~www-root/flags/~ from ~config.lisp~ on the filesystem
 
-| route      | purpse                                     |
-|------------+--------------------------------------------|
-| /api/get   | Get flags using post numbers in the thread |
-| /api/post  | Add flags to the database                  |
-| /api/flags | List the flags we support                  |
-| /flags/*   | The flag images                            |
-
-** Backwards Compatibility
-The API is 1:1 compatable with all previous versions of
-bantflags. Further improvements are achieved by encoding a ~version~
-variable when poking endpoints which allows for breaking changes in
-the script and backend while guaranteeing data can be parsed on both
-ends. See [[https://github.com/C-xC-c/BantFlags/tree/master/Docs/][Docs/{endpoint}]] for changes and compatibility.
+		| route      | purpse                                     |
+		|------------+--------------------------------------------|
+		| /api/get   | Get flags using post numbers in the thread |
+		| /api/post  | Add flags to the database                  |
+		| /api/flags | List the flags we support                  |
+		| /flags/*   | The flag images                            |
+** Notes
+	 You will get an error like =Recursive lock attempt #<SB-THREAD:MUTEX
+	 "global-message-log-lock" owner: #<SB-THREAD:THREAD
+	 "hunchentoot-worker-127.0.0.1:54454" RUNNING {1001DED5E3}>>.= if you
+	 try and log to a file that doesn't exist / you don't have permissions
+	 to read/write.

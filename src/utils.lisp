@@ -2,6 +2,7 @@
 ;; This file is part of bantflags.
 ;; bantflags is licensed under the GNU AGPL Version 3.0 or later.
 ;; see the LICENSE file or <https://www.gnu.org/licenses/>
+(in-package #:bantflags)
 
 (defvar empty-flag '("empty, or there were errors. Re-set your flags."))
 
@@ -26,7 +27,7 @@
           do (setf (gethash (car flag) *flags*) id))
     ;; We don't want users to select `empty-flag`
     (setf *flags-txt*
-          (cl-ppcre:regex-replace (concatenate 'string empty-flag "\\n") ;; newline
+          (cl-ppcre:regex-replace (concatenate 'string (car empty-flag) "\\n") ;; newline
                                   (format nil "~{~a~^~%~}" (mapcan (lambda (x) (cdr x)) flags))
                                   ""))))
 
@@ -58,20 +59,6 @@
   (and (not (null post_nrs))
        (every #'post-number-p post_nrs)
        (boardp board)))
-
-;; hunchentoot
-(defmacro handle (method uri content-type params &body body)
-  "Creates an easy handles for a specific HTTP request method. If the
-method provided sent from the client isn't correct, return 404 and
-stop processing the request.
-
-(handle :get (uri-fun :uri \"/path/to/page\"/) @content-type (args) (body))"
-  `(hunchentoot:define-easy-handler ,uri ,params
-     (unless (eq ,method (hunchentoot:request-method*))
-       (setf (hunchentoot:return-code*) hunchentoot:+http-not-found+)
-       (hunchentoot:abort-request-handler))
-     (setf (tbnl:content-type* tbnl:*reply*) ,content-type)
-     ,@body))
 
 ;; Content types
 (defvar @json "application/json")
