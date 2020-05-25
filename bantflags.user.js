@@ -11,7 +11,7 @@
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     1.5.2
+// @version     2.0.0
 // @grant       GM_xmlhttpRequest
 // @grant       GM_getValue
 // @grant       GM_setValue
@@ -30,7 +30,7 @@
 // see the LICENSE file or <https://www.gnu.org/licenses/>
 
 // Change this if you want verbose debuging information in the console.
-const debugMode = true;
+const debugMode = false;
 
 const isGM4 = typeof GM_setValue === 'undefined';
 const setValue = isGM4 ? GM.setValue : GM_setValue;
@@ -71,14 +71,14 @@ const software = {
   foolfuuka: document.querySelector('div[id="main"] article header .post_data') !== null
 };
 
-const createAndAssign = (element, source) => Object.assign(document.createElement(element), source);
+const makeElement = (tag, options) => Object.assign(document.createElement(tag), options);
 
 const toggleFlagButton = state => document.getElementById('append_flag_button').disabled = state === 'off' ? true : false;
 
 const flagSource = flag => flag_dir + flag + ".png";
 
 /** Add styles to the <head> */
-const addGlobalStyle = css => document.head.appendChild(createAndAssign('style', { innerHTML: css }));
+const addGlobalStyle = css => document.head.appendChild(makeElement('style', { innerHTML: css }));
 
 /** Wrapper around GM_xmlhttpRequest.
  * @param {string} method - The HTTP method (GET, POST).
@@ -98,7 +98,7 @@ const makeRequest = ((method, url, data, func) => {
 /** Itterate over selected flags are store them across browser sessions.*/
 function saveFlags() {
   regions = [];
-  const selectedFlags = document.querySelectorAll("bantflags_flag");
+  const selectedFlags = document.querySelectorAll(".bantflags_flag");
 
   for (var i = 0; i < selectedFlags.length; i++) {
     regions[i] = selectedFlags[i].title;
@@ -114,7 +114,7 @@ function setFlag(flag) {
   let flagName = flag ? flag : document.querySelector('#flagSelect input').value;
   let flagContainer = document.getElementById('bantflags_container');
 
-  flagContainer.appendChild(createAndAssign('img', {
+  flagContainer.appendChild(makeElement('img', {
     title: flagName,
     src: flagSource(flagName),
     id: UID,
@@ -129,13 +129,14 @@ function setFlag(flag) {
     toggleFlagButton('on');
     saveFlags();
   });
-
+	
   if (!flag) // We've added a new flag to our selection
-    saveFlags();
+		saveFlags();
+    
 }
 
 function init() {
-  let flagsForm = createAndAssign('div', {
+  let flagsForm = makeElement('div', {
     className: 'flagsForm',
     innerHTML: '<span id="bantflags_container"></span><button type="button" id="append_flag_button" title="Click to add selected flag to your flags. Click on flags to remove them. Saving happens automatically, you only need to refresh the pages that have an outdated flaglist on the page."><<</button><button id="flagLoad" type="button">Click to load flags.</button><div id="flagSelect" ><ul class="hide"></ul><input type="button" value="(You)" onclick=""></div>'
   });
@@ -173,7 +174,7 @@ function makeFlagSelect() {
 
       for (var i = 0; i < flags.length; i++) {
         let flag = flags[i];
-        flagList.appendChild(createAndAssign('li',{
+        flagList.appendChild(makeElement('li',{
 					innerHTML: `<img src="${flagSource(flag)}" title="${flag}"><span>${flag}</span>`
 				}));
       }
@@ -241,7 +242,7 @@ function resolveFlags() {
 				for (let i = 0; i < flags.length; i++) {
 					const flag = flags[i];
 
-					const newFlag = createAndAssign('a', {
+					const newFlag = makeElement('a', {
 						innerHTML: `<img src="${flagSource(flag)}" title="${flag}">`,
 						className: 'bantFlag',
 						target: '_blank',
@@ -259,12 +260,7 @@ function resolveFlags() {
 }
 
 function main() {
-  if (!regions) { // Should only be called before you set flags for the first time.
-    regions = [];
-    window.confirm('[BantFlags]: No Flags detected.\nIf this is your first time running bantflags, look for the "Click to load flags." button at the bottom right of the thread, then select your flag and press the ">>" button.');
-  }
-
-  // See Docs/styles.css
+	// See Docs/styles.css
 	addGlobalStyle('.bantFlag{padding: 0px 0px 0px 5px; display: inline-block; width: 16px; height: 11px; position: relative;} .bantflags_flag{padding: 1px;} [title^="Romania"]{ position: relative; animation: shakeAnim 0.1s linear infinite;} @keyframes shakeAnim{ 0% {left: 1px;} 25% {top: 2px;} 50% {left: 1px;} 75% {left: 0px;} 100% {left: 2px;}}.flagsForm{float: right; clear: right; margin: 20px 10px;} #flagSelect{display:none;}  #flagSelect ul{list-style-type: none;padding: 0;margin-bottom: 0;cursor: pointer;bottom: 100%;height: 200px;overflow: auto;position: absolute;width:200px;background-color:#fff} #flagSelect ul li {display: block;} #flagSelect ul li:hover {background-color: #ddd;}#flagSelect {position: absolute;}#flagSelect input {width: 200px;} #flagSelect .hide {display: none;}#flagSelect img {margin-left: 2px;}')
 
   if (software.yotsuba) {

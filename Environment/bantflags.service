@@ -1,16 +1,16 @@
 [Unit]
-Description=bantflags backend
+Description=bantflags serb
 
 [Service]
 # Set to the location of the application
-WorkingDirectory=/etc/bantflags
-ExecStart=/usr/bin/dotnet /etc/bantflags/BantFlags.dll
+WorkingDirectory=/var/www/bantflags/src/
+ExecStart=/usr/bin/env sbcl --eval '(progn (push #p"/var/www/bantflags/src" ql:*local-project-directories*) (ql:quickload :bantflags) (main))'
 Restart=always
 # restarts 10 seconds after it goes bang
 RestartSec=10 
 KillSignal=SIGINT
 SyslogIdentifier=bantflags
-User=www-data
+User=nginx
 
 [Install]
 WantedBy=multi-user.target

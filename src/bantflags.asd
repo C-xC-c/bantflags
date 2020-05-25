@@ -1,3 +1,8 @@
+;; (C) Copyright 2020 C-xC-c <boku@plum.moe>
+;; This file is part of bantflags.
+;; bantflags is licensed under the GNU AGPL Version 3.0 or later.
+;; see the LICENSE file or <https://www.gnu.org/licenses/>
+
 (asdf:defsystem #:bantflags
   :description "the bantflags server component"
   :author "Manx (boku@plum.moe)"

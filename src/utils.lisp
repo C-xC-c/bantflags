@@ -1,3 +1,8 @@
+;; (C) Copyright 2020 C-xC-c <boku@plum.moe>
+;; This file is part of bantflags.
+;; bantflags is licensed under the GNU AGPL Version 3.0 or later.
+;; see the LICENSE file or <https://www.gnu.org/licenses/>
+
 (defvar empty-flag '("empty, or there were errors. Re-set your flags."))
 
 (defun conf (thing)
@@ -9,6 +14,7 @@
 (defun cconf (thing)
   (car (conf thing)))
 
+;; db
 (defun set-boards ()
   (setf *boards* (make-hash-table :test 'equal))
   (mapc (lambda (board) (setf (gethash board *boards*) t)) (conf 'boards)))
@@ -18,13 +24,13 @@
   (let ((flags (get-flags)))
     (loop for (id . flag) in flags
           do (setf (gethash (car flag) *flags*) id))
+    ;; We don't want users to select `empty-flag`
     (setf *flags-txt*
-          (cl-ppcre:regex-replace "empty, or there were errors. Re-set your flags\\.\\n"
+          (cl-ppcre:regex-replace (concatenate 'string empty-flag "\\n") ;; newline
                                   (format nil "~{~a~^~%~}" (mapcan (lambda (x) (cdr x)) flags))
                                   ""))))
-(defun set-db-conn ()
-  (setq conn (conf 'db-conn)))
 
+;; validation
 (defun post-number-p (post_nr)
   (if (or (null post_nr)
           (null (parse-integer post_nr :junk-allowed t)))
@@ -34,7 +40,7 @@
 (defun boardp (board)
   (gethash board *boards*))
 
-(defun post-valid-p (post_nr regions board)
+(defun insert-post-p (post_nr regions board)
   (cond
     ((not (post-number-p post_nr))
      (values nil "Invalid post number."))
@@ -48,18 +54,25 @@
      (values t regions))
     (t (values t empty-flag))))
 
-;; Unused, should be in utils
-(defun host-dir (uri path)
-  (push
-   (hunchentoot:create-folder-dispatcher-and-handler uri path)
-   hunchentoot:*dispatch-table*))
+(defun get-posts-p (post_nrs board)
+  (and (not (null post_nrs))
+       (every #'post-number-p post_nrs)
+       (boardp board)))
 
-;; This is uneccessarily complicated, no I'm not sorry
-(defmacro content-type (types)
-  (cons 'progn
-        (mapcar (lambda (type) `(defun ,(car type) (reply)
-                             (setf (tbnl:content-type* reply) ,(cadr type))))
-                types)))
-(content-type
- ((@json "application/json")
-  (@plain "text/plain")))
+;; hunchentoot
+(defmacro handle (method uri content-type params &body body)
+  "Creates an easy handles for a specific HTTP request method. If the
+method provided sent from the client isn't correct, return 404 and
+stop processing the request.
+
+(handle :get (uri-fun :uri \"/path/to/page\"/) @content-type (args) (body))"
+  `(hunchentoot:define-easy-handler ,uri ,params
+     (unless (eq ,method (hunchentoot:request-method*))
+       (setf (hunchentoot:return-code*) hunchentoot:+http-not-found+)
+       (hunchentoot:abort-request-handler))
+     (setf (tbnl:content-type* tbnl:*reply*) ,content-type)
+     ,@body))
+
+;; Content types
+(defvar @json "application/json")
+(defvar @plain "text/plain")

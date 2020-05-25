@@ -1,7 +1,12 @@
+;; (C) Copyright 2020 C-xC-c <boku@plum.moe>
+;; This file is part of bantflags.
+;; bantflags is licensed under the GNU AGPL Version 3.0 or later.
+;; see the LICENSE file or <https://www.gnu.org/licenses/>
+
 ;; Databases in common lisp are the fucking worst.
 ;; Don't even bother.
 
-;; Comparing strings with both
+;; We're comparing strings
 (defparameter *flags* (make-hash-table :test 'equal))
 (defparameter *boards* (make-hash-table :test 'equal))
 (defparameter *flags-txt* nil)
