@@ -18,23 +18,24 @@
 (defmacro dbfun (name &rest body)
   `(defun ,name ,(car body)
      (clsql:with-database (db conn :database-type :mysql :pool t)
-       ,@(cdr body))))
+           ,@(cdr body))))
 
 (defun flag-id (flag)
   (gethash flag *flags*))
 
 (dbfun insert-post (post_nr board flags)
-       (clsql:execute-command (format nil "insert ignore into posts (post_nr, board) values (~a, '~a');" post_nr board))
-       (let ((post-id (caar (clsql:query (format nil "select id from posts where post_nr = ~a and board = '~a';" post_nr board)))))
+       (clsql:execute-command (format nil "insert ignore into posts (post_nr, board) values (~a, '~a');" post_nr board) :database db)
+       (let ((post-id (caar (clsql:query (format nil "select id from posts where post_nr = ~a and board = '~a';" post_nr board) :database db))))
          (clsql:execute-command
           (with-output-to-string (s)
             (format s "insert into postflags (post_nr, flag) values")
             (loop for flag in (butlast flags)
                   do (format s "(~a,~a)," post-id (flag-id flag)))
-            (format s "(~a,~a);" post-id (flag-id (car (last flags))))))))
+            (format s "(~a,~a);" post-id (flag-id (car (last flags)))))
+          :database db)))
 
 (dbfun get-posts (posts board)
-       (let ((result (clsql:query (format nil get-posts-sql posts board)))
+       (let ((result (clsql:query (format nil get-posts-sql posts board) :database db))
              (table (make-hash-table)))
          (loop for (post_nr . flag) in (reverse result) do
            (unless (gethash post_nr table)
@@ -43,4 +44,4 @@
          (jojo:to-json table)))
 
 (dbfun get-flags ()
-       (clsql:query "select flags.id, flags.flag from flags"))
+       (clsql:query "select flags.id, flags.flag from flags" :database db))
