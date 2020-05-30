@@ -41,7 +41,8 @@
 
 (henh:handle :post (api-get :uri "/api/get") @json
     (post_nrs board version)
-  (if (get-posts-p (cl-ppcre:split "," post_nrs) board)
+  (setf post_nrs (cl-ppcre:split "," post_nrs))
+  (if (get-posts-p post_nrs board)
       (format nil "~a~%" (get-posts post_nrs board))
       (t (format nil "{[\"~a\"]}~%" "bad"))))
 
