@@ -11,7 +11,7 @@
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     2.0.0
+// @version     2.0.1
 // @grant       GM_xmlhttpRequest
 // @grant       GM_getValue
 // @grant       GM_setValue
@@ -144,7 +144,7 @@ function init() {
 	// Where do we append the flagsForm to?
 	if (software.yotsuba) { document.getElementById('delform').appendChild(flagsForm); }
 	else if (software.nodegucaDoushio) { document.querySelector('section').append(flagsForm); } // As posts are added the flagForm moves up the page. Could we append this after .section?
-
+	
 	for (let i = 0; i < regions.length; i++) {
 		setFlag(regions[i]);
 	}
@@ -216,13 +216,12 @@ function resolveFlags() {
 		api_get,
 		'post_nrs=' + encodeURIComponent(postNrs) + '&board=' + encodeURIComponent(board_id) + '&version=' + version,
 		function (resp) {
-
 			if (resp.status !== 200) {
 				console.log('[bantflags] Couldn\'t load flags. Refresh the page');
 				debug(resp.responseText);
 				return;
 			}
-			
+
 			const jsonData = JSON.parse(resp.responseText);
 			debug(`JSON: ${resp.responseText}`);
 			
@@ -260,6 +259,11 @@ function resolveFlags() {
 }
 
 function main() {
+
+	if (!regions) {
+		regions = [];
+	}
+	
 	// See Docs/styles.css
 	addGlobalStyle('.bantFlag{padding: 0px 0px 0px 5px; display: inline-block; width: 16px; height: 11px; position: relative;} .bantflags_flag{padding: 1px;} [title^="Romania"]{ position: relative; animation: shakeAnim 0.1s linear infinite;} @keyframes shakeAnim{ 0% {left: 1px;} 25% {top: 2px;} 50% {left: 1px;} 75% {left: 0px;} 100% {left: 2px;}}.flagsForm{float: right; clear: right; margin: 20px 10px;} #flagSelect{display:none;}	 #flagSelect ul{list-style-type: none;padding: 0;margin-bottom: 0;cursor: pointer;bottom: 100%;height: 200px;overflow: auto;position: absolute;width:200px;background-color:#fff} #flagSelect ul li {display: block;} #flagSelect ul li:hover {background-color: #ddd;}#flagSelect {position: absolute;}#flagSelect input {width: 200px;} #flagSelect .hide {display: none;}#flagSelect img {margin-left: 2px;}')
 
@@ -286,7 +290,12 @@ function main() {
 	board_id = window.location.pathname.split('/')[1];
 	debug(board_id);
 
-	resolveFlags();
+	try {
+		resolveFlags();
+	}
+	catch (fuckywucky) {
+		console.log(`Wah! Manx fucked something up ;~;\nPoke him somewhere this this:\n${fuckywucky}`)
+	}
 }
 
 if (isGM4) { // Fuck you GM4
