@@ -5,19 +5,19 @@
 	[[https://flags.plum.moe/bantflags.user.js][Install bantflags]]
 
 ** Userscript
-	 The userscript uses of ~GM_xmlhttpRequest~ to get and post flags with
-	 the backend . A user's flags are stored between pages using
-	 ~GM_setValue~ and ~GM_getValue~.
+	 The userscript uses of ~GM_xmlhttpRequest~ to get and post flags
+	 with the backend . A user's flags are stored between pages using
+	 ~GM_setValue~ and ~GM_getValue~, or their GreaseMonkey4
+	 equivalents.
 
 	 Old versions of GreaseMonkey will be able to recieve updates to the
-	 script through the ~@updateURL~ and ~@downloadURL~ directives, though
-	 these were depricated sometime in GreaseMonkey 3.x and updates are
-	 only checked from the location the script was downloaded from so be
-	 careful where you upload links.
+	 script through the ~@updateURL~ and ~@downloadURL~ directives,
+	 though these were depricated sometime in GreaseMonkey 3.x and
+	 updates are only checked from the location the script was
+	 downloaded from so be careful where you upload links.
 
 	 On self hosting, changing ~back_end~ to your domain /should/ be all
-	 you need to do, but don't take this as fact. I haven't tested the
-	 example nginx config.
+	 you need to do, but don't take this as fact.
 	 
 	 The userscript has been designed specifically to target ECMAScript
 	 2015 (ES6), making liberal use of arrow functions, and const/let
@@ -26,9 +26,12 @@
 ** Backend
 *** Prerequisites
 		- I use SBCL
+		- Some mysql, I use Mariadb
+		- Quicklisp
 *** Dependancies
 		- hunchentoot
-		- [[https://github.com/C-xC-c/hunchenhelpers][hunchenhelpers]], my hunchentoot helper library
+		- [[https://github.com/C-xC-c/hunchenhelpers][hunchenhelpers]], my hunchentoot helper library (yes I'm proud of
+      the name)
 		- clsql
 		- jonathan, the JSON encoder/decoder
 		- cl-ppcre
@@ -37,11 +40,18 @@
 		2. Symlink src/ to your ~/quicklisp/local-projects
 		3. Move ~src/config.example.org~ to ~src/config.org~ and change it
        to whatever your settings are.
-		4. Type the following into your repl:
+		4. Initialise the database by doing something like ~mysql <<
+       env/database.sql~, This will create all the tables you will
+       need, plus an entry for the ~`empty flag`~
+		5. Type the following into your repl:
 		#+BEGIN_SRC lisp
 		(ql:quickload :bantflags)
 		(bantflags:main)
 		#+END_SRC
+		6. To use bantflags as a Systemd service, I have included an
+       example service and an ~init.el~ file for the service to run,
+       since Systemd will automatically kill it if you just eval
+       ~bantflags:main~.
 		You will almost certainly have several issues building clsql, the
 		database connector used. I've [[https://plum.moe/words/bludgeoning-clsql-and-mariadb.html][written a blog post]] on some of the
 		issues I've encountered personally, but there's no guarantee it'll

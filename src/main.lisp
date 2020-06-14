@@ -5,27 +5,29 @@
 (in-package :bantflags)
 
 (defun init ()
+  (assert (not (null config)))
   (setf conn (conf 'db-conn))
-  (loop repeat (cconf 'poolsize) do
-    (clsql:connect conn :database-type :mysql :pool t :if-exists :new))
+  (loop repeat (conf 'poolsize)
+        do ;; This doesn't work lole
+           (clsql:connect conn :database-type :mysql :pool t :if-exists :new))
   (set-boards)
   (set-flags)
-  (defvar +serb+ (make-instance 'hunchentoot:easy-acceptor
-                                :port (cconf 'port)
-                                :document-root (cconf 'www-root)
-                                :access-log-destination (cconf 'access-log)
-                                :message-log-destination (cconf 'error-log))))
+  (defvar *serb* (make-instance 'hunchentoot:easy-acceptor
+                                :port (conf 'port)
+                                :address "127.0.0.1" ;; localhost
+                                :document-root (conf 'www-root)
+                                :access-log-destination (conf 'access-log)
+                                :message-log-destination (conf 'error-log))))
 
 (defun main ()
   (handler-case (init)
     (error (c)
       (format t "Init fucked up, exiting ~a" c)
       (return-from main)))
-  (handler-case (hunchentoot:start +serb+)
+  (handler-case (hunchentoot:start *serb*)
     (error (c)
       (format t "couldn't start serb: ~a" c)
-      (return-from main)))
-  (loop (sleep 43200) (gc :full t)))
+      (return-from main))))
 
 (defmethod hunchentoot:acceptor-status-message (acceptor (http-status-code (eql 404)) &key)
   (format nil "")) ;; Empty 404 page

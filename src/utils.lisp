@@ -7,15 +7,11 @@
 (defvar empty-flag '("empty, or there were errors. Re-set your flags."))
 
 (defun conf (thing)
-  (let ((item (cdr (assoc thing config))))
+  (let ((item (nth 1 (assoc thing config))))
     (if (null item)
         (error "no such config item" thing)
         item)))
 
-(defun cconf (thing)
-  (car (conf thing)))
-
-;; db
 (defun set-boards ()
   (setf *boards* (make-hash-table :test 'equal))
   (mapc (lambda (board) (setf (gethash board *boards*) t)) (conf 'boards)))
@@ -25,8 +21,7 @@
   (let ((flags (get-flags)))
     (loop for (id . flag) in flags
           do (setf (gethash (car flag) *flags*) id))
-    ;; We don't want users to select `empty-flag`
-    (setf *flags-txt*
+    (setf *flags-txt* ;; We don't want users to select `empty-flag`
           (cl-ppcre:regex-replace (concatenate 'string (car empty-flag) "\\n") ;; newline
                                   (format nil "~{~a~^~%~}" (mapcan (lambda (x) (cdr x)) flags))
                                   ""))))

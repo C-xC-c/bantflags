@@ -29,7 +29,7 @@
          (clsql:execute-command
           (with-output-to-string (s)
             (format s "insert into postflags (post_nr, flag) values")
-            (loop for flag in (butlast flags)
+            (loop for flag in (butlast flags) ;; The last flag needs a semi-colon instead of a comma
                   do (format s "(~a,~a)," post-id (flag-id flag)))
             (format s "(~a,~a);" post-id (flag-id (car (last flags)))))
           :database db)))
