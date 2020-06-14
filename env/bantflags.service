@@ -1,0 +1,16 @@
+[Unit]
+Description=bantflags serb
+
+[Service]
+# Set to the location of the application
+WorkingDirectory=/var/www/bantflags/src/
+ExecStart=/usr/bin/env sbcl --load init.el
+Restart=always
+# restarts 10 seconds after it goes bang
+RestartSec=10 
+KillSignal=SIGINT
+SyslogIdentifier=bantflags
+User=nginx
+
+[Install]
+WantedBy=multi-user.target
