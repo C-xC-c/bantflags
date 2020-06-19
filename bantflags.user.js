@@ -11,7 +11,7 @@
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     2.0.1
+// @version     2.1.0
 // @grant       GM_xmlhttpRequest
 // @grant       GM_getValue
 // @grant       GM_setValue
@@ -29,7 +29,7 @@
 // /bant/ Flags is licensed under the GNU AGPL Version 3.0 or later.
 // see the LICENSE file or <https://www.gnu.org/licenses/>
 
-// Change this if you want verbose debuging information in the console.
+// This will print a load of shit to the console
 const debugMode = false;
 
 const isGM4 = typeof GM_setValue === 'undefined';
@@ -37,9 +37,6 @@ const setValue = isGM4 ? GM.setValue : GM_setValue;
 const getValue = isGM4 ? GM.getValue : GM_getValue;
 const xmlHttpRequest = isGM4 ? GM.xmlHttpRequest : GM_xmlhttpRequest;
 
-//
-// DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE FLAG SELECT
-//
 const version = encodeURIComponent(2); // Breaking changes.
 const back_end = 'https://flags.plum.moe/';
 const api_flags = back_end + 'api/flags';
@@ -55,9 +52,6 @@ let regions = []; // The flags we have selected.
 let postNrs = []; // all post numbers in the thread.
 let board_id = ""; // The board we get flags for.
 let flagsLoaded = false;
-//
-// DO NOT EDIT ANYTHING IN THIS SCRIPT DIRECTLY - YOUR FLAGS SHOULD BE CONFIGURED USING THE FLAG SELECT
-//
 
 const debug = text => {
 	if (debugMode)
@@ -72,19 +66,12 @@ const software = {
 };
 
 const makeElement = (tag, options) => Object.assign(document.createElement(tag), options);
-
 const toggleFlagButton = state => document.getElementById('append_flag_button').disabled = state === 'off' ? true : false;
-
-const flagSource = flag => flag_dir + flag + ".png";
+const flagSource = flag => flag_dir + flag + '.png';
 
 /** Add styles to the <head> */
-const addGlobalStyle = css => document.head.appendChild(makeElement('style', { innerHTML: css }));
+const addStyle = css => document.head.appendChild(makeElement('style', { innerHTML: css }));
 
-/** Wrapper around GM_xmlhttpRequest.
- * @param {string} method - The HTTP method (GET, POST).
- * @param {string} url - The URL of the request.
- * @param {string} data - text for the form body.
- * @param {Function} func - The function run when we recieve a response. Response data is sent directly to it. */
 const makeRequest = ((method, url, data, func) => {
 	xmlHttpRequest({
 		method: method,
@@ -100,56 +87,51 @@ function saveFlags() {
 	regions = [];
 	const selectedFlags = document.querySelectorAll(".bantflags_flag");
 
-	for (var i = 0; i < selectedFlags.length; i++) {
+	for (let i = 0; i < selectedFlags.length; i++) {
 		regions[i] = selectedFlags[i].title;
 	}
 
 	setValue(namespace, regions);
 }
 
-/** Add a flag to our selection.
- * @param {string} flag - The flag to add to our selection. Either passed from saved flags or the current value of flagSelect */
+/** Add a flag to our selection. */
 function setFlag(flag) {
-	let UID = Math.random().toString(36).substring(7);
-	let flagName = flag ? flag : document.querySelector('#flagSelect input').value;
-	let flagContainer = document.getElementById('bantflags_container');
+	const flagName = flag ? flag : document.querySelector('#flagSelect input').value;
+	const flagContainer = document.getElementById('bantflags_container');
 
 	flagContainer.appendChild(makeElement('img', {
 		title: flagName,
 		src: flagSource(flagName),
-		id: UID,
-		className: 'bantflags_flag'
+		className: 'bantflags_flag',
+		onclick: function() {
+			flagContainer.removeChild(this);
+			if (flagsLoaded)
+				toggleFlagButton('on');
+			saveFlags();
+		}
 	}));
 
 	if (flagContainer.children.length >= max_flags)
 		toggleFlagButton('off');
-
-	document.getElementById(UID).addEventListener("click", e => {
-		flagContainer.removeChild(e.target);
-		toggleFlagButton('on');
-		saveFlags();
-	});
 	
 	if (!flag) // We've added a new flag to our selection
-		saveFlags();
-	
+		saveFlags();	
 }
 
 function init() {
-	let flagsForm = makeElement('div', {
+	const flagsForm = makeElement('div', {
 		className: 'flagsForm',
-		innerHTML: '<span id="bantflags_container"></span><button type="button" id="append_flag_button" title="Click to add selected flag to your flags. Click on flags to remove them. Saving happens automatically, you only need to refresh the pages that have an outdated flaglist on the page."><<</button><button id="flagLoad" type="button">Click to load flags.</button><div id="flagSelect" ><ul class="hide"></ul><input type="button" value="(You)" onclick=""></div>'
+		innerHTML: '<span id="bantflags_container"></span><button type="button" id="append_flag_button" title="Click to add selected flag to your flags. Click on flags to remove them." disabled="true"><<</button><button id="flagLoad" type="button">Click to load flags.</button><div id="flagSelect" ><ul class="hide"></ul><input type="button" value="(You)" onclick=""></div>'
 	});
 
 	// Where do we append the flagsForm to?
 	if (software.yotsuba) { document.getElementById('delform').appendChild(flagsForm); }
-	else if (software.nodegucaDoushio) { document.querySelector('section').append(flagsForm); } // As posts are added the flagForm moves up the page. Could we append this after .section?
+	else if (software.nodegucaDoushio) { document.querySelector('section').insertAdjacentElement('afterEnd', flagsForm); }
 	
 	for (let i = 0; i < regions.length; i++) {
 		setFlag(regions[i]);
 	}
 
-	document.getElementById('append_flag_button').addEventListener('click', () => flagsLoaded ? setFlag() : alert('Load flags before adding them.'));
 	document.getElementById('flagLoad').addEventListener('click', makeFlagSelect, { once: true });
 }
 
@@ -168,19 +150,19 @@ function makeFlagSelect() {
 			}
 			
 			let flagSelect = document.getElementById('flagSelect');
-			let flagList = flagSelect.querySelector('ul');
 			let flagInput = flagSelect.querySelector('input');
-			let flags = resp.responseText.split('\n');
+			let flagList = flagSelect.querySelector('ul');
 
-			for (var i = 0; i < flags.length; i++) {
-				let flag = flags[i];
+			let flags = resp.responseText.split('\n');
+			for (let i = 0; i < flags.length; i++) {
+				const flag = flags[i];
 				flagList.appendChild(makeElement('li',{
 					innerHTML: `<img src="${flagSource(flag)}" title="${flag}"><span>${flag}</span>`
 				}));
-			}
+			}			
 
-			flagSelect.addEventListener('click', function (e) {
-				// So it works if we click the flag image
+			flagSelect.addEventListener('click', e => {
+				// Maybe we clicked the flag image
 				const node = e.target.nodeName === 'LI' ? e.target : e.target.parentNode;
 				if (node.nodeName === 'LI')
 					flagInput.value = node.querySelector('span').innerHTML;
@@ -188,6 +170,10 @@ function makeFlagSelect() {
 				flagList.classList.toggle('hide');
 			});
 
+			const flagButton = document.getElementById('append_flag_button');
+			flagButton.addEventListener('click', () => setFlag());
+			flagButton.disabled = false;
+			
 			document.getElementById('flagLoad').style.display = 'none';
 			document.querySelector('.flagsForm').style.marginRight = "200px"; // flagsForm has position: absolute and is ~200px long.
 			flagSelect.style.display = 'inline-block';
@@ -226,10 +212,9 @@ function resolveFlags() {
 			debug(`JSON: ${resp.responseText}`);
 			
 			Object.keys(jsonData).forEach(post => {
-				let flags = jsonData[post];
+				const flags = jsonData[post];
 
-				if (flags.length <= 0)
-					return;
+				if (flags.length <= 0) return;
 				
 				debug(`Resolving flags for >>${post}`);
 
@@ -240,15 +225,13 @@ function resolveFlags() {
 				
 				for (let i = 0; i < flags.length; i++) {
 					const flag = flags[i];
-
-					const newFlag = makeElement('a', {
+					
+					flagContainer.append(makeElement('a', {
 						innerHTML: `<img src="${flagSource(flag)}" title="${flag}">`,
 						className: 'bantFlag',
 						target: '_blank',
 						title: flag
-					});
-					
-					flagContainer.append(newFlag);
+					}));
 
 					debug(`\t -> ${flag}`);
 				}
@@ -259,46 +242,45 @@ function resolveFlags() {
 }
 
 function main() {
-
 	if (!regions) {
 		regions = [];
 	}
 	
 	// See Docs/styles.css
-	addGlobalStyle('.bantFlag{padding: 0px 0px 0px 5px; display: inline-block; width: 16px; height: 11px; position: relative;} .bantflags_flag{padding: 1px;} [title^="Romania"]{ position: relative; animation: shakeAnim 0.1s linear infinite;} @keyframes shakeAnim{ 0% {left: 1px;} 25% {top: 2px;} 50% {left: 1px;} 75% {left: 0px;} 100% {left: 2px;}}.flagsForm{float: right; clear: right; margin: 20px 10px;} #flagSelect{display:none;}	 #flagSelect ul{list-style-type: none;padding: 0;margin-bottom: 0;cursor: pointer;bottom: 100%;height: 200px;overflow: auto;position: absolute;width:200px;background-color:#fff} #flagSelect ul li {display: block;} #flagSelect ul li:hover {background-color: #ddd;}#flagSelect {position: absolute;}#flagSelect input {width: 200px;} #flagSelect .hide {display: none;}#flagSelect img {margin-left: 2px;}')
+	addStyle('.bantFlag{padding: 0px 0px 0px 5px; display: inline-block; width: 16px; height: 11px; position: relative;} .bantflags_flag{padding: 1px;} [title^="Romania"]{ position: relative; animation: shakeAnim 0.1s linear infinite;} @keyframes shakeAnim{ 0% {left: 1px;} 25% {top: 2px;} 50% {left: 1px;} 75% {left: 0px;} 100% {left: 2px;}}.flagsForm{float: right; clear: right; margin: 20px 10px;} #flagSelect{display:none;}	 #flagSelect ul{list-style-type: none;padding: 0;margin-bottom: 0;cursor: pointer;bottom: 100%;height: 200px;overflow: auto;position: absolute;width:200px;background-color:#fff} #flagSelect ul li {display: block;} #flagSelect ul li:hover {background-color: #ddd;}#flagSelect {position: absolute;}#flagSelect input {width: 200px;} #flagSelect .hide {display: none;}#flagSelect img {margin-left: 2px;}')
 
 	if (software.yotsuba) {
 		getPosts('.postContainer');
 
-		addGlobalStyle('.flag{top: 0px;left: -1px}');
+		addStyle('.flag{top: 0px;left: -1px}');
 		init();
 	}
 
-	if (software.nodegucaDoushio) {
+	else if (software.nodegucaDoushio) {
 		getPosts('section[id], article[id]');
 
-		addGlobalStyle('.bantFlag {cursor: default} .bantFlag img {pointer-events: none;}');
+		addStyle('.bantFlag {cursor: default} .bantFlag img {pointer-events: none;}');
 		init();
 	}
 
-	if (software.foolfuuka) {
+	else if (software.foolfuuka) {
 		getPosts('article[id]');
 
-		addGlobalStyle('.bantFlag{top: -2px !important;left: -1px !important}');
+		addStyle('.bantFlag{top: -2px !important;left: -1px !important}');
 	}
 	
 	board_id = window.location.pathname.split('/')[1];
-	debug(board_id);
+	debug(`board: ${board_id}`);
 
 	try {
 		resolveFlags();
 	}
 	catch (fuckywucky) {
-		console.log(`Wah! Manx fucked something up ;~;\nPoke him somewhere this this:\n${fuckywucky}`)
+		console.log(`Wah! Manx fucked something up ;~;\nPoke him somewhere with this:\n${fuckywucky}`)
 	}
 }
 
-if (isGM4) { // Fuck you GM4
+if (isGM4) { // Fuck you GreaseMonkey
 	(async () => {
 		regions = await getValue(namespace);
 		main();
@@ -316,48 +298,35 @@ const postFlags = (post_nr, func = resp => debug(resp.responseText)) => makeRequ
 	func);
 
 if (software.yotsuba) {
-	const GetEvDetail = e => e.detail || e.wrappedJSObject.detail;
-	
-	// 4chanX and native extension respectively
-	document.addEventListener('QRPostSuccessful', e => postFlags(e.detail.postID));
-	document.addEventListener('4chanQRPostSuccess', e => postFlags(GetEvDetail(e).postId));
+	const e_detail = e => e.detail || e.wrappedJSObject.detail// what?
+	document.addEventListener('QRPostSuccessful', e => postFlags(e_detail(e).postID));
+	document.addEventListener('4chanQRPostSuccess', e => postFlags(e_detail(e).postId));
 
-	// I need to look at these.
-	document.addEventListener('ThreadUpdate', function (e) {
-		var evDetail = GetEvDetail(e);
-		var evDetailClone = typeof cloneInto === 'function' ? cloneInto(evDetail, unsafeWindow) : evDetail;
+	document.addEventListener('ThreadUpdate', e => {
+		const d = e_detail(e)
+		if (d[404]) return;
 
-		//ignore if 404 event
-		if (evDetail[404] === true) {
-			return;
+		d.newPosts.forEach(post => postNrs.push(post.split('.')[1]));
+
+		resolveFlags();
+	});
+
+	document.addEventListener('4chanThreadUpdated', e => {
+		const d = e_detail(e);
+		if (d.count <= 0) return;
+		
+		// Get the added posts in reverse order, take post numbers from ID
+		const posts = document.querySelectorAll('.postContainer');
+		for (let i = 0; i < d.count; i++) {
+			postNrs.push(posts[posts.length - 1 - i].id.substr(2));
 		}
-
-		evDetailClone.newPosts.forEach(function (post_board_nr) {
-			var post_nr = post_board_nr.split('.')[1];
-			postNrs.push(post_nr);
-		});
-
+		
 		resolveFlags();
-	}, false);
-
-	document.addEventListener('4chanThreadUpdated', function (e) {
-		var evDetail = GetEvDetail(e);
-		let threadID = window.location.pathname.split('/')[3];
-		let postsContainer = Array.prototype.slice.call(document.getElementById('t' + threadID).childNodes);
-		let lastPosts = postsContainer.slice(Math.max(postsContainer.length - evDetail.count, 1)); //get the last n elements (where n is evDetail.count)
-
-		lastPosts.forEach(function (post_container) {
-			var post_nr = post_container.id.replace('pc', '');
-			postNrs.push(post_nr);
-		});
-
-		resolveFlags();
-	}, false);
+	});
 }
 
 if (software.nodegucaDoushio) {
-
-	const postFunc = function() {
+	const postFunc = () => {
 		postNrs.push(mutation.target.id);
 		resolveFlags();
 	}
@@ -369,7 +338,7 @@ if (software.nodegucaDoushio) {
 			if (mutation.addedNodes.length <= 0)
 				return; // We only care if something post was added
 			
-			var firstAddedNode = mutation.addedNodes[0].nodeName;
+			const firstAddedNode = mutation.addedNodes[0].nodeName;
 
 			// Enter a thread / change boards
 			if (mutation.target.nodeName === 'THREADS') {
