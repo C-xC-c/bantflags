@@ -1,3 +1,6 @@
+* DotnetFlags
+This branch exists as an archive of bantflags before it was rewritten
+in Common Lisp. The code here still works but is unmaintained.
 * BantFlags
 A user script and backend enabling user created flags on [[https://boards.4chan.org/bant][/bant/]],
 originally based on [[https://github.com/flaghunters/Extra-Flags-for-4chan][extraflags]].
@@ -27,7 +30,6 @@ declarations. Update your hecking browser.
 *** Prerequisites
 - .NET Core 3.1
 - MariaDB / MySQL
-
 *** .NET dependancies
 - Nito.AsyncEX
 - Newtonsoft.Json
@@ -38,7 +40,6 @@ declarations. Update your hecking browser.
 - Microsoft.EntityFrameworkCore.SqlServer
 - Microsoft.EntityFrameworkCore.Tools
 - Magick.NET-Q8-AnyCPU
-
 *** Setup
 1) [[https://dotnet.microsoft.com/download/dotnet-core][Install .NET Core]] 
 2) Clone and build the BantFlags solution.
