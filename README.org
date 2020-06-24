@@ -45,8 +45,8 @@
        need, plus an entry for the ~`empty flag`~
 		5. Type the following into your repl:
 		#+BEGIN_SRC lisp
-		(ql:quickload :bantflags)
-		(bantflags:main)
+(ql:quickload :bantflags)
+(bantflags:main)
 		#+END_SRC
 		6. To use bantflags as a Systemd service, I have included an
        example service and an ~init.el~ file for the service to run,
