@@ -13,7 +13,7 @@
 (defparameter *flags-txt* nil)
 (defparameter conn nil)
 
-(defvar get-posts-sql "SELECT posts.post_nr, flags.flag from flags left join postflags on (postflags.flag = flags.id) left join posts on (postflags.post_nr = posts.id) where posts.post_nr in (~{'~a'~^,~}) and posts.board = '~a';")
+(defparameter get-posts-sql "SELECT posts.post_nr, flags.flag from flags left join postflags on (postflags.flag = flags.id) left join posts on (postflags.post_nr = posts.id) where posts.post_nr in (~{'~a'~^,~}) and posts.board = '~a';")
 
 (defmacro dbfun (name &rest body)
   `(defun ,name ,(car body)

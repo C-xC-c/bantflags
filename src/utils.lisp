@@ -6,11 +6,10 @@
 
 (defvar empty-flag '("empty, or there were errors. Re-set your flags."))
 
-(defun conf (thing)
-  (let ((item (nth 1 (assoc thing config))))
-    (if (null item)
-        (error "no such config item" thing)
-        item)))
+(defun conf (thing &aux (item (cadr (assoc thing config))))
+  (if (null item)
+      (error "no such config item" thing)
+      item))
 
 (defun set-boards ()
   (setf *boards* (make-hash-table :test 'equal))
@@ -56,5 +55,5 @@
        (boardp board)))
 
 ;; Content types
-(defvar @json "application/json")
-(defvar @plain "text/plain")
+(defparameter @json "application/json")
+(defparameter @plain "text/plain")
