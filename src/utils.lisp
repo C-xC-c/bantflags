@@ -25,7 +25,7 @@
 ;; validation
 (defun post-number-p (post_nr)
   (unless (or (null post_nr)
-              (null parse-integer post_nr :junk-allowed t))
+              (null (parse-integer post_nr :junk-allowed t)))
     post_nr))
 
 (defun boardp (board)
