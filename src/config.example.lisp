@@ -1,14 +1,15 @@
 (in-package #:bantflags)
 
-(defvar config
-  '((boards ("bant" "uhh"))
-    (staging-password "not implemented")
-    (db-conn ("localhost" "bantflags" "flags" "default"))
-    (poolsize 3)
-    (www-root #p"/path/to/files/")
-    (port 4242)
-    ;; These can be a file or stream, make them nil to disable logging
-    ;; If the file can't be accessed, throws a weird error. See
-    ;; README.org
-    (access-log *standard-output*)
-    (error-log #p"/path/to/error/log/")))
+;; Change your configuration here after the `.'
+(defparameter config
+  '((:port             . 4242)
+    (:boards           . ("bant" "uhh"))
+    (:db-conn          . ("localhost" "bantflags" "flags" "default"))
+    (:poolsize         . 3)))
+
+;; Ignore this
+(defmacro config-item (thing &aux (item (gensym)))
+  `(let ((,item (assoc ,thing config)))
+     (when (atom ,item)
+       (error "No such config item"))
+     (cdr ,item)))

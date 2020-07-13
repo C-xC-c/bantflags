@@ -14,10 +14,11 @@
                :hunchenhelpers
                :cl-ppcre
                :clsql
-               :jonathan)
-  :Components
-  ((:file "package")
-   (:file "utils")
-   (:file "db")
-   (:file "config")
-   (:file "main")))
+               :jonathan
+               :osicat
+               :inferior-shell)
+  :Components ((:file "package")
+               (:file "config")
+               (:file "utils")
+               (:file "db")
+               (:file "main")))

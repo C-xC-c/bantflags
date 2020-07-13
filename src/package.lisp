@@ -1,4 +1,6 @@
 (defpackage #:bantflags
   (:use #:cl)
-  (:export :init
-           :*serb*))
+  (:export #:init
+           #:*serb*
+           #:start
+           #:stop))

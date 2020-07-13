@@ -4,35 +4,37 @@
 ;; see the LICENSE file or <https://www.gnu.org/licenses/>
 (in-package :bantflags)
 
-(defun init ()
-  (assert (not (null config)))
-  (setf conn (conf 'db-conn))
-  (loop repeat (conf 'poolsize)
-        do ;; This doesn't work lole
-           (clsql:connect conn :database-type :mysql :pool t :if-exists :new))
+(defvar *serb* nil
+  "The hunchentoot acceptor that serves requests")
+
+(defun configure ()
+  (setf conn (config-item :db-conn))
+  ;; We need to write an actual connection pool here
+  (loop repeat (- (config-item :poolsize) (length (clsql:connected-databases)))
+        do (clsql:connect conn :database-type :mysql :pool t :if-exists :new))
   (set-boards)
   (set-flags)
-  (defvar *serb* (make-instance 'hunchentoot:easy-acceptor
-                                :port (conf 'port)
-                                :address "127.0.0.1" ;; localhost
-                                :document-root (conf 'www-root)
-                                :access-log-destination (conf 'access-log)
-                                :message-log-destination (conf 'error-log))))
+  (setf *serb* (make-instance 'toot:acceptor
+                              :port (config-item :port)
+                              :name 'bantflags-acceptor)))
 
-(defun main ()
-  (handler-case (init)
-    (error (c)
-      (format t "Init fucked up, exiting ~a" c)
-      (return-from main)))
-  (handler-case (hunchentoot:start *serb*)
-    (error (c)
-      (format t "couldn't start serb: ~a" c)
-      (return-from main))))
+(defun start ()
+  (configure)
+  (when (null *serb*)
+    (error "serb is nil? ehh??"))
+  (hunchentoot:start *serb*))
 
-(defmethod hunchentoot:acceptor-status-message (acceptor (http-status-code (eql 404)) &key)
-  (format nil "")) ;; Empty 404 page
+(defun tear-down (&aux (dbs (clsql:connected-databases)))
+  (when dbs (loop for db in dbs do (clsql:disconnect :database db))))
 
-(henh:handle :post (api-post :uri "/api/post") @json
+(defun stop ()
+  (tear-down)
+  (when (hunchentoot:started-p *serb*)
+    (hunchentoot:stop *serb* :soft t)))
+
+(toot:handle (api-post :post "/api/post"
+                       :acceptor 'bantflags-acceptor
+                       :content-type toot:@json)
     (post_nr regions board version)
   (multiple-value-bind (result msg) (insert-post-p post_nr (cl-ppcre:split "," regions) board)
     (cond
@@ -41,13 +43,17 @@
        (format nil "{\"~a\": [~{\"~a\"~^,~}]}~%" post_nr msg)) ;; This makes JSON
       (t (format nil "{\"Error\": \"~a\"}~%" msg)))))
 
-(henh:handle :post (api-get :uri "/api/get") @json
+(toot:handle (api-get :post "/api/get"
+                      :acceptor 'bantflags-acceptor
+                      :content-type toot:@json)
     (post_nrs board version)
   (setf post_nrs (cl-ppcre:split "," post_nrs))
   (if (get-posts-p post_nrs board)
-      (format nil "~a~%" (get-posts post_nrs board))
-      (t (format nil "{[\"~a\"]}~%" "bad"))))
+      (format nil "~a" (get-posts post_nrs board))
+      "{[\"bad\"]}"))
 
-(henh:handle :get (api-flags :uri "/api/flags") @plain
+(toot:handle (api-flags :get "/api/flags"
+                        :acceptor 'bantflags-acceptor
+                        :content-type toot:@plain)
     ()
-  (format nil "~a~%" *flags-txt*))
+  *flags-txt*)
