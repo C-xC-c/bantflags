@@ -11,7 +11,7 @@
 // @exclude     http*://archive.nyafuu.org/bant/statistics/
 // @exclude     http*://archived.moe/bant/statistics/
 // @exclude     http*://thebarchive.com/bant/statistics/
-// @version     2.1.0
+// @version     2.2.2
 // @grant       GM_xmlhttpRequest
 // @grant       GM_getValue
 // @grant       GM_setValue
@@ -95,7 +95,7 @@ function saveFlags() {
 }
 
 /** Add a flag to our selection. */
-function setFlag(flag) {
+function setFlag(flag, save) {
 	const flagName = flag ? flag : document.querySelector('#flagSelect input').value;
 	const flagContainer = document.getElementById('bantflags_container');
 
@@ -114,7 +114,7 @@ function setFlag(flag) {
 	if (flagContainer.children.length >= max_flags)
 		toggleFlagButton('off');
 	
-	if (!flag) // We've added a new flag to our selection
+	if (!flag || save === true) // We've added a new flag to our selection
 		saveFlags();	
 }
 
@@ -279,6 +279,12 @@ function main() {
 		console.log(`Wah! Manx fucked something up ;~;\nPoke him somewhere with this:\n${fuckywucky}`)
 	}
 }
+
+document.addEventListener('dblclick', e => {
+	if (e.target.parentNode.classList.contains('bantFlag')) {
+		setFlag(e.target.title, true);
+	}
+});
 
 if (isGM4) { // Fuck you GreaseMonkey
 	(async () => {
